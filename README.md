@@ -129,7 +129,10 @@ cd frontend
 # 2. Install npm packages
 npm install
 
-# 3. Return to the root directory
+# 3. Start the frontend application
+npm start
+
+# 4. Return to the root directory
 cd ..
 ```
 
