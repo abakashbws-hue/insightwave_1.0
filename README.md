@@ -165,6 +165,8 @@ The `migration_agent` will then execute its sequence of sub-agents, presenting t
 
 If you need a generic migration document, you can ask for it directly.
 
-> **User Prompt:** `I need a migration runbook.`
+> **User Prompt:** `Generate a migration runbook for migrating from on-prem(vSphere) to GCVE.`
+
+> `Generate a migration planning doc for migrating from on-prem(vSphere) to GCVE.`
 
 The `pattern_doc_agent` will then ask you clarifying questions (like the target environment) before providing a link to the correct template.
