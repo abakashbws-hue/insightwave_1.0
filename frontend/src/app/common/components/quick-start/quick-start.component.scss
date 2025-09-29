@@ -1,0 +1,237 @@
+.quick-start-container {
+  padding: 24px;
+}
+
+.cards-outer-container {
+  overflow: auto;
+  scrollbar-width: none;
+}
+
+.cards-outer-container:after {
+  z-index: -1;
+  content: "";
+  width: 10%;
+  opacity: 0.5 !important;
+}
+
+.cards-container-all-categories {
+  width: max-content;
+  display: flex;
+  overflow-x: auto;
+  gap: 1%;
+  max-width: 160%;
+  min-width: 100%;
+}
+
+.cards-container-few-categories {
+  width: max-content;
+  display: flex;
+  overflow-x: auto;
+  gap: 1%;
+  max-width: 160%;
+  min-width: 100%;
+  justify-content: center;
+  padding-inline: 3%;
+  padding-bottom: 1%;
+}
+
+.container-box {
+  box-sizing: border-box;
+  width: 239px;
+  height: 239px;
+  background: var(--background-primary);
+  border-radius: 14px;
+  padding: 1%;
+  cursor: pointer;
+  box-shadow: 0 2px 4px var(--shadow-color);
+}
+
+.selected-box {
+  box-sizing: border-box;
+  height: auto;
+  border-radius: 14px;
+  cursor: pointer;
+  width: max-content;
+  max-width: 100%;
+  display: flex;
+  padding-right: 4px;
+  background: linear-gradient(
+    92.1deg,
+    #a8e4fd 19.16%,
+    #aec8f9 79%,
+    #adc8fa 135.24%
+  );
+  box-shadow: 0 4px 8px var(--shadow-primary);
+}
+
+.selected-box .card-heading .card-title {
+  color: #1f1f1f;
+}
+
+.container-box:not(.selected-box):hover {
+  background: var(--hover-bg) !important;
+  box-shadow: 0 6px 12px var(--shadow-primary);
+}
+
+.card-detail-container {
+  width: 235px;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-heading {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-top: 1.5%;
+  width: 90%;
+  color: var(--text-primary);
+
+  .mat-mdc-card-avatar {
+    font-size: 36px;
+    width: 38px;
+    height: 38px;
+    margin-bottom: 0;
+    border-radius: 0;
+    margin-right: 6px;
+    color: #1a73e8;
+  }
+
+  .card-title {
+    font-size: 1.2em;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+}
+
+.card-content {
+  padding-top: 4%;
+  white-space: break-spaces;
+  text-wrap: balance;
+  text-align: left;
+  font-size: 14px;
+  color: #5f6368;
+  margin-bottom: 0;
+  line-height: 1.4;
+  padding-right: 1%;
+  width: 95%;
+}
+
+.suggested-utterances-container {
+  max-height: 200px;
+  max-width: 900px;
+  overflow-y: auto;
+  padding-right: 8px;
+  gap: 4%;
+  gap: 8px;
+  display: flex;
+  flex-direction: column;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--shadow-color);
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(66, 133, 244, 0.3);
+    border-radius: 3px;
+
+    &:hover {
+      background: rgba(66, 133, 244, 0.5);
+    }
+  }
+}
+
+.suggested-utterances-chip {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  align-items: center;
+  white-space: normal;
+  overflow-wrap: break-word;
+  font-size: 15px;
+  font-weight: 500;
+  color: #4285f4;
+
+  &:hover {
+    --mdc-chip-label-text-color: #fff !important;
+    color: #fff !important;
+  }
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+}
+
+.close-button-container {
+  padding: 0 4px !important;
+  // Style moved from .expand-close-button-container
+  display: block;
+  // overflow: hidden; // This is handled by the animation's 'collapsed' state
+
+  .close-button {
+    margin-top: -11px !important;
+    color: #5f6368;
+
+    &:hover {
+      color: #1f1f1f;
+    }
+  }
+}
+
+// Material chip styling to match existing design
+::ng-deep mat-chip-row.mat-mdc-standard-chip {
+  --mdc-chip-label-text-color: #4285f4;
+  --mdc-chip-elevated-container-color: #fff;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+  height: auto;
+  min-height: 32px;
+
+  &:hover {
+    background-color: rgba(66, 133, 244, 0.1) !important;
+  }
+
+  .mdc-evolution-chip__text-label {
+    white-space: normal;
+  }
+}
+
+// Responsive design
+@media (max-width: 600px) {
+  .quick-start-container {
+    padding: 16px;
+  }
+
+  .cards-outer-container {
+    width: 100%;
+  }
+
+  .cards-container-all-categories,
+  .cards-container-few-categories {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .container-box {
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .card-heading {
+    font-size: 16px;
+  }
+
+  .card-content {
+    font-size: 13px;
+  }
+}

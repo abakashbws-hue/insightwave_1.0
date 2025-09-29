@@ -1,0 +1,20 @@
+<div class="video-dialog-container">
+  <div class="dialog-header">
+    <h2 class="app-gradient">{{ videoTitle }}</h2>
+    <button class="close-button" (click)="closeDialog()" matTooltip="Close" aria-label="Close Video Dialog">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <div class="mat-typography video-dialog-content">
+    <p>Loading video...</p>
+    <iframe *ngIf="safeVideoUrl" [src]="safeVideoUrl"
+      width="640" height="480" frameborder="0"
+      allow="autoplay; encrypted-media" allowfullscreen>
+    </iframe>
+    <p *ngIf="!safeVideoUrl" class="error-message">
+      Could not load video. Please check your internet connection or try again later.
+    </p>
+  </div>
+
+</div>

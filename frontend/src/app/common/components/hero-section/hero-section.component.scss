@@ -1,0 +1,133 @@
+.hero-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 15px 50px;
+    background-size: cover;
+    color: var(--text-primary);
+    position: relative;
+    min-height: 400px;
+    overflow: hidden;
+  }
+  
+  .hero-content {
+    flex-basis: 50%;
+    padding-right: 30px;
+    z-index: 2;
+  }
+  
+  .hero-content h1 {
+    font-size: 3rem;
+    font-weight: 500;
+    margin: 0;
+  }
+  
+  .hero-content h2 {
+    color: #6a6a6a;
+    font-size: 1.8em;
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+    margin: 0;
+  }
+  
+  .cloud-icon {
+    width: 30px;
+    height: auto;
+    margin-right: 10px;
+  }
+  
+  .hero-content p {
+    font-size: 1.1em;
+    line-height: 1.6;
+    margin: 10px 0 25px;
+    max-width: 600px;
+  }
+  
+  .cta-button {
+    padding: 12px 25px;
+    font-size: 1em;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    transition: background-color 0.3s ease;
+    background: linear-gradient(var(--background-secondary), var(--background-secondary)) padding-box,
+    linear-gradient(90deg, #3DBFFC, #4385F2, #4285F4) border-box;
+    border-radius: 50em;
+    border: 2px solid transparent;
+
+    mat-icon {
+      background: -moz-linear-gradient(90deg, #3DBFFC, #4385F2, #4285F4);
+      background: -webkit-linear-gradient(90deg, #3DBFFC, #4385F2, #4285F4);
+      background: linear-gradient(90deg, #3DBFFC, #4385F2, #4285F4);
+      -webkit-background-clip: text;
+      -moz-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    span {
+      background: linear-gradient(90deg, #3DBFFC, #4385F2, #4285F4);
+      -webkit-background-clip: text; /* For WebKit browsers (Chrome, Safari) */
+      background-clip: text;
+      color: transparent;
+    }
+  }
+  
+  .cta-button:hover {
+    background-color: #4285F4;
+  }
+  
+  .cta-button .material-icons {
+    margin-right: 8px;
+  }
+  
+  .hero-image-container {
+    flex-basis: 45%;
+    position: relative;
+    text-align: center;
+    z-index: 1;
+  }
+  
+  .hero-robot-image {
+    max-width: 80%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+  }
+  
+  /* --- Responsiveness --- */
+  @media (max-width: 768px) {
+    .hero-section {
+      flex-direction: column;
+      text-align: center;
+      padding: 30px 15px;
+    }
+  
+    .hero-content {
+      padding-right: 0;
+      margin-bottom: 30px;
+      order: 2;
+    }
+  
+     .hero-content p {
+       max-width: 100%;
+     }
+  
+    .hero-image-container {
+      order: 1;
+      flex-basis: auto;
+      width: 70%;
+      margin-bottom: 20px;
+    }
+  
+    .hero-robot-image {
+       max-width: 100%;
+    }
+  
+    .float-label {
+       position: static;
+       display: inline-block;
+       margin: 5px;
+    }
+  }

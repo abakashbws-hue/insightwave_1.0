@@ -1,0 +1,63 @@
+<!-- Show form only if not submitted -->
+<form *ngIf="!isSubmitted && !errorMessage" [formGroup]="feedbackForm" (ngSubmit)="onSubmit()" class="feedback-form-container">
+    <span class="feedback-form-title">Provide your feedback</span>
+    <div class="rating-stars" role="radiogroup" aria-label="Provide your feedback">
+        <mat-icon
+            *ngFor="let star of stars"
+            role="radio"
+            (click)="rate(star)"
+            [class.filled]="star <= currentRating"
+            [attr.aria-pressed]="star <= currentRating"
+            [attr.aria-checked]="star <= currentRating"
+            [attr.aria-label]="star + (star === 1 ? ' star' : ' stars')"
+            tabindex="0"
+            (keydown.enter)="rate(star)"
+            [attr.aria-hidden]="false">
+            {{ star <= currentRating ? 'star' : 'star_border' }}
+        </mat-icon>
+        <!-- Hidden input to show validation error if rating is 0 -->
+        <input type="hidden" formControlName="rating" aria-hidden="true">
+    </div>
+
+    <mat-error *ngIf="feedbackForm.controls['rating'].hasError('min') && feedbackForm.controls['rating'].touched">
+        Please select a rating.
+    </mat-error>
+
+    <mat-form-field appearance="outline" class="feedback-comments">
+        <mat-label>Additional Comments</mat-label>
+        <textarea matInput
+            formControlName="comments"
+            cdkTextareaAutosize
+            #autosize="cdkTextareaAutosize"
+            cdkAutosizeMinRows="3"
+            cdkAutosizeMaxRows="6"
+            placeholder="Tell us more about your experience..."
+            maxlength="500"
+            aria-label="Additional Comments"></textarea>
+        <mat-hint align="end">{{ feedbackForm.controls['comments'].value?.length || 0 }} / 500</mat-hint>
+        <mat-error *ngIf="feedbackForm.controls['comments'].hasError('maxlength')">
+            Comments cannot exceed 500 characters.
+        </mat-error>
+    </mat-form-field>
+
+    <button mat-flat-button color="primary" type="submit" [disabled]="!feedbackForm.valid" aria-label="Submit Feedback">
+        Submit
+    </button>
+</form>
+
+<!-- Show thank you message if submitted -->
+<div *ngIf="isSubmitted" class="feedback-submitted-container" @fadeIn>
+    <div class="submitted-header">
+        <mat-icon class="submitted-icon" color="primary">check_circle_outline</mat-icon>
+        <h3 class="submitted-title">Thank You!</h3>
+    </div>
+    <p class="submitted-message">Your feedback has been submitted successfully.</p>
+</div>
+
+
+<!-- Show error message if submission is unsuccessful -->
+<div *ngIf="errorMessage" class="feedback-error-container" @fadeIn>
+    <mat-icon class="error-icon" color="warn">error_outline</mat-icon>
+    <p class="error-message">{{ errorMessage }}</p>
+    <button mat-button (click)="resetForm()" aria-label="Reset Feedback Form">Reset</button>
+</div>

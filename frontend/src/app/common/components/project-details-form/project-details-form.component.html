@@ -1,0 +1,29 @@
+<div [formGroup]="projectDetailsFormGroup" class="project-details-form">
+  <div>What is your purpose of using this tool?</div>
+  <mat-radio-group formControlName="toolPurpose" class="flex-column" aria-label="Select an option"
+    (change)="onToolPurposeChange($event.value)">
+    <mat-radio-button [value]="toolPurposeEnum.CustomerEngagement">Customer Engagement</mat-radio-button>
+    <mat-radio-button [value]="toolPurposeEnum.TestingAndExperimentation">Testing and Experimentation</mat-radio-button>
+  </mat-radio-group>
+  <ng-container *ngIf="toolPurpose && toolPurpose !== toolPurposeEnum.TestingAndExperimentation">
+    <ng-container *ngIf="toolPurpose === toolPurposeEnum.CustomerEngagement">
+      <mat-form-field appearance="outline">
+        <mat-label>Customer Name</mat-label>
+        <input matInput formControlName="customerName" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Project Name</mat-label>
+        <input matInput formControlName="projectName" />
+      </mat-form-field>
+    </ng-container>
+    <mat-form-field appearance="outline">
+      <mat-label>Description</mat-label>
+      <textarea matInput rows="3" formControlName="description"></textarea>
+    </mat-form-field>
+  </ng-container>
+  <div class="action-buttons">
+    <button mat-flat-button [disabled]="projectDetailsFormGroup.invalid" (click)="onNext()">
+      Next
+    </button>
+  </div>
+</div>

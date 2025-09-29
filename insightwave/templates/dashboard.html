@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+
+<!-- TODO:
+- VM Count per Wave (Sorted by Priority) chnage to horizontal bar chart
+- Add Data Quality: VMs Requiring Review
+- improve Primary Criteria Drivers
+- Wave Risk & Complexity Matrix
+-->
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Migration Wave Dashboard</title>
+    <link rel="icon" type="image/png" href="insightWave_logo.png">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --color-blue: #4285F4;
+            --color-red: #EA4335;
+            --color-yellow: #FBBC05;
+            --color-green: #34A853;
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-color: #3c4043;
+            --heading-color: #202124;
+            --border-color: #e0e0e0;
+            --shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            --font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .dashboard-container {
+            max-width: 1800px;
+            margin: auto;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 24px;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background: var(--card-bg);
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border-left: 5px solid var(--color-blue);
+        }
+
+        .header h1 {
+            margin: 0;
+            color: var(--heading-color);
+            font-weight: 500;
+        }
+        
+        .header p {
+            margin: 5px 0 0;
+            color: #5f6368;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+
+        .metric-card {
+            grid-column: span 4;
+            text-align: center;
+        }
+
+        .metric-card .value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .metric-card .label {
+            font-size: 1rem;
+            color: #5f6368;
+            margin-top: 5px;
+        }
+        
+        .metric-card.blue .value { color: var(--color-blue); }
+        .metric-card.green .value { color: var(--color-green); }
+        .metric-card.red .value { color: var(--color-red); }
+
+        .chart-card {
+            grid-column: span 6;
+            height: 550px;
+            display: flex;
+            flex-direction: column;
+            position: relative; /* Needed for child elements */
+        }
+        
+        .full-width-card {
+            grid-column: 1 / -1;
+        }
+
+        .chart-card h3, .table-card h3 {
+            margin-top: 0;
+            color: var(--heading-color);
+            font-weight: 500;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .donut-wrapper {
+            position: relative;
+            flex-grow: 1; /* Allow wrapper to fill space */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .donut-wrapper canvas {
+            position: absolute; /* Position inside the wrapper */
+            max-width: 100%;
+            max-height: 100%;
+        }
+        .donut-center-text {
+            position: absolute;
+            text-align: center;
+            pointer-events: none;
+        }
+        .donut-center-text .value {
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: var(--color-red);
+        }
+        .donut-center-text .label {
+            font-size: 1rem;
+            color: #5f6368;
+        }
+
+        /* New rule to make canvas wrappers fill available space */
+        .chart-card > canvas {
+            flex-grow: 1;
+            min-height: 0; /* Important for flex-grow in a fixed height container */
+        }
+
+
+        .table-container { width: 100%; border-collapse: collapse; }
+        .table-container thead { background-color: #f1f3f4; }
+        .table-container th, .table-container td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .table-container th { font-weight: 500; color: var(--heading-color); }
+        .table-container tbody tr { cursor: pointer; transition: background-color 0.2s ease; }
+        .table-container tbody tr:hover { background-color: #e8f0fe; }
+        .details-row { display: none; }
+        .details-row.visible { display: table-row; }
+        .details-cell { padding: 20px !important; background-color: #fafafa; }
+        .criteria-box { background: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; font-family: 'Courier New', Courier, monospace; font-size: 0.9em; max-height: 400px; overflow-y: auto; }
+        .criteria-box h4 { margin-top: 0; font-family: var(--font-family); color: var(--heading-color); }
+        .criteria-box ul { list-style-type: none; padding-left: 20px; }
+        .criteria-box .logical-operator { font-weight: bold; background: var(--color-yellow); color: #fff; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; font-size: 0.8em; margin-bottom: 5px; display: inline-block; }
+        .criteria-box .rule { background: #f1f3f4; padding: 8px; border-radius: 4px; margin-bottom: 5px; border-left: 3px solid var(--color-blue); }
+        .criteria-box .rule .field { font-weight: bold; color: var(--color-blue); }
+        .criteria-box .rule .operator { font-style: italic; color: var(--color-red); }
+        .criteria-box .rule .value { color: var(--color-green); }
+
+        @media (max-width: 1200px) {
+            .metric-card { grid-column: span 6; }
+            .chart-card { grid-column: span 12; }
+        }
+        
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .dashboard-container { gap: 10px; }
+            .metric-card { grid-column: span 12; }
+        }
+    </style>
+</head>
+<body>
+
+<script>
+    // This is where you will paste your JSON data.
+    const migrationBlueprint = "__MIGRATION_BLUEPRINT_PLACEHOLDER__";
+</script>
+
+<div class="dashboard-container">
+    <div class="header">
+        <h1>Advanced Migration Wave Dashboard</h1>
+        <p>Strategic insights into migration waves, complexity, resource allocation, and data quality.</p>
+    </div>
+
+    <div id="metric-total-vms" class="card metric-card blue">
+        <p class="value">0</p><p class="label">Total VMs to Migrate</p>
+    </div>
+    <div id="metric-total-waves" class="card metric-card green">
+        <p class="value">0</p><p class="label">Total Migration Waves</p>
+    </div>
+    <div id="metric-avg-size" class="card metric-card red">
+        <p class="value">0</p><p class="label">Average Wave Size (VMs)</p>
+    </div>
+
+    <div class="card chart-card" style="grid-column: 1 / -1; height: 500px;">
+        <h3>VM Count per Wave (Sorted by Priority)</h3>
+        <canvas id="wavesBarChart"></canvas>
+    </div>
+    
+    <div class="card chart-card">
+        <h3>Migration Focus by Technology Stream</h3>
+        <canvas id="techStreamDonut"></canvas>
+    </div>
+
+    <div class="card chart-card">
+        <h3>Data Quality: Uncategorized VMs</h3>
+        <div class="donut-wrapper">
+            <canvas id="dataQualityDonut"></canvas>
+            <div id="dataQualityText" class="donut-center-text"></div>
+        </div>
+    </div>
+
+    <div class="card chart-card">
+        <h3>VM Breakdown by Environment</h3>
+        <canvas id="envPieChart"></canvas>
+    </div>
+
+    <div class="card chart-card">
+        <h3>Primary Criteria Drivers</h3>
+        <canvas id="criteriaFieldsChart"></canvas>
+    </div>
+    
+    <div class="card full-width-card table-card">
+        <h3>Detailed Wave Definitions (Click Row to Expand Criteria)</h3>
+        <table class="table-container">
+            <thead><tr><th>Priority</th><th>Wave Name</th><th>VM Count</th><th>Objective</th></tr></thead>
+            <tbody id="wavesTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    if (!migrationBlueprint || !migrationBlueprint.wave_definitions || migrationBlueprint.wave_definitions.length === 0) {
+        document.querySelector('.header h1').textContent = 'No Data Found';
+        document.querySelector('.header p').textContent = 'Please paste a valid migration blueprint JSON into the script tag in the HTML source.';
+        return;
+    }
+
+    const waves = migrationBlueprint.wave_definitions.sort((a, b) => a.priority - b.priority);
+    const googleColors = ['#4285F4', '#DB4437', '#F4B400', '#0F9D58', '#673AB7', '#009688', '#FF5722'];
+
+    // --- METRIC CARDS ---
+    const totalVMs = waves.reduce((sum, wave) => sum + wave.vm_count, 0);
+    const totalWaves = waves.length;
+    const avgWaveSize = totalWaves > 0 ? Math.round(totalVMs / totalWaves) : 0;
+    document.getElementById('metric-total-vms').querySelector('.value').textContent = totalVMs.toLocaleString();
+    document.getElementById('metric-total-waves').querySelector('.value').textContent = totalWaves;
+    document.getElementById('metric-avg-size').querySelector('.value').textContent = avgWaveSize.toLocaleString();
+
+
+    // --- CHART 1: VM Count per Wave (Bar Chart) ---
+    new Chart(document.getElementById('wavesBarChart'), {
+        type: 'bar',
+        data: {
+            labels: waves.map(w => w.wave_name),
+            datasets: [{
+                label: 'VM Count',
+                data: waves.map(w => w.vm_count),
+                backgroundColor: waves.map((_, i) => googleColors[i % googleColors.length]),
+                borderColor: waves.map((_, i) => googleColors[i % googleColors.length]),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title: (context) => context[0].label,
+                        label: (context) => `VMs: ${context.raw.toLocaleString()}`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Number of VMs' }
+                },
+                y: {
+                    ticks: {
+                        font: { size: 10 }
+                    }
+                }
+            }
+        }
+    });
+    
+
+    // --- CHART 2: Migration Focus by Technology Stream (Donut Chart) ---
+    const getTechCategory = (wave) => {
+        // Combine name, objective, and rationale for a more comprehensive search text.
+        const searchText = (wave.wave_name + ' ' + wave.objective + ' ' + wave.rationale).toLowerCase();
+
+        // High-priority, specific applications first
+        if (searchText.includes('sap')) return 'SAP/ERP';
+
+        // Disposition-based categories
+        if (searchText.includes('decommission') || searchText.includes('archive') || searchText.includes('powered off') || searchText.includes('old')) return 'Decommission/Archival';
+        if (searchText.includes('test') || searchText.includes('gold image') || searchText.includes('template')) return 'Test/Dev & Images';
+
+        // Application & Data Platforms
+        if (searchText.includes('database') || searchText.includes('sql') || searchText.includes('oracle') || searchText.includes('postgres') || searchText.includes('mongo')) return 'Databases';
+        if (searchText.includes('vdi')) return 'End-User VDI';
+        if (searchText.includes('container') || searchText.includes('kubernetes') || searchText.includes('docker')) return 'Container Platforms';
+        if (searchText.includes('cloudera') || searchText.includes('hadoop')) return 'Big Data';
+        if (searchText.includes('kafka')) return 'Messaging';
+
+        // Infrastructure Categories
+        if (searchText.includes('cucm') || searchText.includes('uccx') || searchText.includes('cisco uc') || searchText.includes('voice') || searchText.includes('call manager')) return 'Unified Communications';
+        if (searchText.includes('zpa') || searchText.includes('qualys') || searchText.includes('umbrella') || searchText.includes('nios') || searchText.includes('dns')) return 'Network & Security';
+        if (searchText.includes('vmware') || searchText.includes('vcenter') || searchText.includes('vsphere') || searchText.includes('vcls') || searchText.includes('srm') || searchText.includes('nsx') || searchText.includes('hcx') || searchText.includes('infrastructure appliance')) return 'VMware & Infrastructure';
+
+        // OS-based categories (handle mixed environments)
+        const hasWindows = searchText.includes('windows');
+        const hasLinux = searchText.includes('linux');
+        if (hasWindows && hasLinux) return 'Mixed OS (Windows/Linux)';
+        if (hasWindows) return 'Windows Servers';
+        if (hasLinux) return 'Linux Servers';
+
+        return 'General/Uncategorized';
+    };
+    const techStreamCounts = waves.reduce((acc, wave) => {
+        const category = getTechCategory(wave);
+        acc[category] = (acc[category] || 0) + wave.vm_count;
+        return acc;
+    }, {});
+    new Chart(document.getElementById('techStreamDonut'), {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(techStreamCounts),
+            datasets: [{ data: Object.values(techStreamCounts), backgroundColor: googleColors }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+    });
+
+    // --- CHART 3: Data Quality (Donut Chart) ---
+    const uncategorizedVMs = waves
+        .filter(w => {
+            const searchText = (w.wave_name + ' ' + w.objective).toLowerCase();
+            return searchText.includes('uncategorized') || searchText.includes('manual review') || searchText.includes('undefined') || searchText.includes('needs review');
+        })
+        .reduce((sum, w) => sum + w.vm_count, 0);
+    const categorizedVMs = totalVMs - uncategorizedVMs;
+    const uncategorizedPercentage = totalVMs > 0 ? ((uncategorizedVMs / totalVMs) * 100).toFixed(1) : 0;
+    
+    document.getElementById('dataQualityText').innerHTML = `<div class="value">${uncategorizedPercentage}%</div><div class="label">Requires Review</div>`;
+    
+    new Chart(document.getElementById('dataQualityDonut'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Categorized', 'Requires Review'],
+            datasets: [{ data: [categorizedVMs, uncategorizedVMs], backgroundColor: [googleColors[3], googleColors[1]], borderWidth: 0 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false }, tooltip: { enabled: true } } }
+    });
+
+
+    // --- CHART 4: Environment Pie Chart
+    const envCounts = waves.reduce((acc, wave) => {
+        let envCategory = 'Mixed';
+        const searchText = (wave.wave_name + ' ' + wave.objective).toLowerCase();
+        if (searchText.includes(' production')) envCategory = 'Production';
+        else if (searchText.includes(' pre-prod')) envCategory = 'Pre-Production';
+        else if (searchText.includes(' dev') || searchText.includes('integration')) envCategory = 'Dev & Integration';
+        acc[envCategory] = (acc[envCategory] || 0) + wave.vm_count;
+        return acc;
+    }, {});
+    new Chart(document.getElementById('envPieChart'), {
+        type: 'pie',
+        data: {
+            labels: Object.keys(envCounts),
+            datasets: [{ data: Object.values(envCounts), backgroundColor: [googleColors[1], googleColors[2], googleColors[3], googleColors[0]] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+    });
+
+    //  --- CHART 5: Criteria Fields Chart
+    const fieldCounts = {};
+    const countFields = (criteria) => {
+        for (const key in criteria) {
+            if (key === 'and' || key === 'or') {
+                criteria[key].forEach(subCrit => countFields(subCrit));
+            } else if (key === 'not') {
+                countFields(criteria[key]); // Recursively count within 'not'
+            } else {
+                fieldCounts[key] = (fieldCounts[key] || 0) + 1;
+            }
+        }
+    };
+    waves.forEach(wave => countFields(wave.criteria));
+    const sortedFields = Object.entries(fieldCounts).sort((a,b) => b[1] - a[1]);
+    new Chart(document.getElementById('criteriaFieldsChart'), {
+        type: 'bar',
+        data: {
+            labels: sortedFields.map(item => item[0]),
+            datasets: [{ label: 'Times Used in Definitions', data: sortedFields.map(item => item[1]), backgroundColor: googleColors[3] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Usage Count' } } } }
+    });
+    
+    //  --- CHART 6: DETAILED WAVES TABLE ---
+    const tableBody = document.getElementById('wavesTableBody');
+    waves.forEach(wave => {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${wave.priority}</td><td>${wave.wave_name}</td><td>${wave.vm_count.toLocaleString()}</td><td>${wave.objective}</td>`;
+        const detailsRow = document.createElement('tr');
+        detailsRow.classList.add('details-row');
+        detailsRow.innerHTML = `<td colspan="4" class="details-cell"><div class="criteria-box"><h4>Wave Criteria Breakdown</h4>${formatCriteria(wave.criteria)}</div></td>`;
+        tableBody.appendChild(row);
+        tableBody.appendChild(detailsRow);
+        row.addEventListener('click', () => detailsRow.classList.toggle('visible'));
+    });
+});
+
+function formatCriteria(criteria, level = 0) {
+    let html = '<ul>';
+    for (const key in criteria) {
+        if (key === 'and' || key === 'or') {
+            html += `<li><span class="logical-operator">${key}</span><ul>`;
+            criteria[key].forEach(subCrit => { html += `<li>${formatCriteria(subCrit, level + 1)}</li>`; });
+            html += '</ul></li>';
+        } else if (key === 'not') {
+            html += `<li><span class="logical-operator">NOT</span>`;
+            html += formatCriteria(criteria[key], level + 1);
+            html += '</li>';
+        } else {
+            const rule = criteria[key];
+            if (rule && typeof rule.operator === 'string') {
+                const value = Array.isArray(rule.value) ? `[${rule.value.join(', ')}]` : `'${rule.value}'`;
+                html += `<li><div class="rule"><span class="field">${key}</span> <span class="operator">${rule.operator.replace(/_/g, ' ')}</span> <span class="value">${value}</span></div></li>`;
+            } else {
+                html += `<li><div class="rule"><span class="field">${key}</span> <span class="operator">N/A</span> <span class="value">N/A</span></div></li>`;
+            }
+        }
+    }
+    return html + '</ul>';
+}
+</script>
+
+</body>
+</html>

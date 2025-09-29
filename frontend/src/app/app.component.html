@@ -1,0 +1,12 @@
+<ng-container *ngIf="showLayout">
+  <app-header></app-header>
+</ng-container>
+<main class="content-area">
+  <app-spinner
+    *ngIf="isLoading$ | async"
+    message="Loading..."
+    [isOpaque]="true"
+  ></app-spinner>
+  <router-outlet></router-outlet>
+</main>
+<ng-container *ngIf="showLayout"><app-footer></app-footer></ng-container>

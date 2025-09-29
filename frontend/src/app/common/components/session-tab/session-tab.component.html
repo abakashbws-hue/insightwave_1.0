@@ -1,0 +1,16 @@
+<div class="session-wrapper">
+  <div class="session-tab-container" style="margin-top: 16px">
+    <div (click)="handleSessionClick(session)" *ngFor="let session of sessionList" [ngClass]="
+        session.id === sessionId ? 'session-item current' : 'session-item'
+      ">
+      <div class="session-info">
+        <div class="session-id">
+          insightwave
+        </div>
+        <div class="session-date">
+          {{ getDate(session) }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,6 @@
+<section id="automation-tools" class="card-list-section">
+    <h2 @fadeSlideIn>Automation Tools</h2>
+    <div class="card-grid" [@staggerFade]>
+      <app-card *ngFor="let cardItem of cards" [card]="cardItem"></app-card>
+    </div>
+</section>

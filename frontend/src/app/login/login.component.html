@@ -1,0 +1,26 @@
+<div class="login-page">
+    <div class="overlay">
+        <div class="title">
+            <img class="logo-image" src="assets/images/iwlogo.png">
+            <p class="logo-title">InsightWave</p>
+        </div>
+        <p class="subtitle">
+            One portal for all your migration automation tools such as Insight Wave.
+        </p>
+        
+
+        <div class="login-card">
+            <h2>Welcome 👋</h2>
+            <p>Login with Google account to begin using the tools.</p>
+
+            <button (click)="loginWithGoogle()" class="google-login">
+                <img src="assets/icons/google-icon.svg" alt="Google Icon" />
+                Login with Google
+            </button>
+
+        </div>
+
+        <footer>© 2025 Google Cloud. All rights reserved.</footer>
+    </div>
+</div>
+<app-spinner *ngIf="loader" message="Please wait..."></app-spinner>

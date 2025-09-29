@@ -1,0 +1,58 @@
+<header class="app-header" [class.scrolled]="isScrolled">
+  <div class="left-section">
+    <div class="logo">
+      <img
+        src="assets/images/iwlogo.png"
+        alt="Cloud Icon"
+        class="cloud-icon"
+      />
+      <a routerLink="/app">
+        <span class="app-gradient">InsightWave</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="right-section">
+    <app-theme-toggle></app-theme-toggle>
+    <a *ngIf="showAgentChat"
+      mat-icon-button
+      routerLink="/chatbot"
+      matTooltip="Chat with Agent"
+      aria-label="Go to agent chat page"
+    >
+      <mat-icon>chat</mat-icon>
+    </a>
+    <!-- <a
+      mat-icon-button
+      routerLink="/usage-dashboard"
+      matTooltip="View Dashboard"
+      aria-label="Go to Dashboard"
+    >
+      <mat-icon>analytics</mat-icon>
+    </a> -->
+    <a
+      mat-icon-button
+      [href]="bugReportUrl"
+      target="_blank"
+      matTooltip="Report a bug"
+      aria-label="Report a bug"
+    >
+      <mat-icon>bug_report</mat-icon>
+    </a>
+    <div [matMenuTriggerFor]="menu" class="user-profile">
+      <div *ngIf="user$ | async as user; else defaultProfile">
+        <img *ngIf="user.photoURL" [src]="user.photoURL" alt="User Profile" />
+        <img *ngIf="!user.photoURL" src="assets/images/profile-pic.png" alt="User Profile" />
+      </div>
+      <ng-template #defaultProfile>
+        <img src="assets/images/profile-pic.png" alt="User Profile" />
+      </ng-template>
+    </div>
+    <mat-menu #menu="matMenu">
+      <button mat-menu-item (click)="signOut()">
+        <mat-icon>logout</mat-icon>
+        <span>Sign Out</span>
+      </button>
+    </mat-menu>
+  </div>
+</header>

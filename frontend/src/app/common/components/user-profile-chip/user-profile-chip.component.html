@@ -1,0 +1,10 @@
+<div class="user-chip">
+    <img
+        class="user-avatar"
+        [src]="userProfileImageUrl"
+        [alt]="userAltText"
+        (error)="handleImageError()"
+        loading="lazy"
+    >
+    <span class="user-name">{{ userDisplayName }}</span>
+</div>

@@ -1,0 +1,51 @@
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  height: 60px;
+  padding: 0 1rem;
+
+  background-color: var(--background-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.left-section {
+  display: flex;
+  align-items: center;
+}
+
+.right-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo {
+  display: flex;
+  align-self: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text-secondary);
+
+  img {
+    height: 30px;
+  }
+}
+
+.logo a {
+  text-decoration: none; // Remove underline
+  color: inherit; // Use the parent's text color
+}
+
+.user-profile img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+}

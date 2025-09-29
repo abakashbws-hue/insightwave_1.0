@@ -1,0 +1,66 @@
+<div class="quick-start-container">
+  <div class="cards-outer-container">
+    <div
+      class="cards-container"
+      [ngClass]="
+        tools.length >= 5
+          ? 'cards-container-all-categories'
+          : 'cards-container-few-categories'
+      "
+    >
+      @for (tool of tools; track tool.id) {
+      <div
+        class="container-box {{ tool.id }}"
+        id="{{ tool.id }}"
+        [class.selected-box]="expandedCardId === tool.id"
+        (click)="toggleCard(tool.id)"
+      >
+        <div class="card-detail-container">
+          <div class="card-heading">
+            <mat-icon mat-card-avatar>{{ tool.icon }}</mat-icon>
+            <span class="card-title">{{ tool.title }}</span>
+          </div>
+          <div class="card-content">{{ tool.description }}</div>
+        </div>
+
+        <div
+          class="suggested-utterances-container {{
+            tool.id
+          }}_suggested_utterances_container"
+          [@expandCollapse]="
+            expandedCardId === tool.id ? 'expanded' : 'collapsed'
+          "
+        >
+          @for (utterance of tool.utterances; track utterance) {
+          <div>
+            <mat-chip-row
+              (click)="$event.stopPropagation(); onUtteranceClick(utterance)"
+            >
+              <span class="suggested-utterances-chip">
+                <mat-icon>keyboard_return</mat-icon>
+                {{ utterance }}
+              </span>
+            </mat-chip-row>
+          </div>
+          }
+        </div>
+
+        <div
+          class="{{ tool.id }}_close_button_container close-button-container"
+          [@expandCollapse]="
+            expandedCardId === tool.id ? 'expanded' : 'collapsed'
+          "
+        >
+          <button
+            mat-icon-button
+            class="close-button"
+            (click)="$event.stopPropagation(); toggleCard(tool.id)"
+          >
+            <mat-icon class="close-icon">close</mat-icon>
+          </button>
+        </div>
+      </div>
+      }
+    </div>
+  </div>
+</div>

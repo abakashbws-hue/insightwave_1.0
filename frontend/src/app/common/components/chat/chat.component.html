@@ -1,0 +1,343 @@
+<mat-drawer-container class="drawer-container" autosize>
+  
+  <mat-drawer class="sidenav" #sidenav mode="side" [opened]="true" [style.width.px]="showSidePanel ? 320 : 72"
+    [disableClose]="true" @fadeInFromLeft>
+    <div class="drawer-internal-content">
+      <div class="drawer-header-flex">
+        <button mat-icon-button (click)="toggleSidePanel()" aria-label="Toggle side panel">
+          <mat-icon>menu</mat-icon>
+        </button>
+      </div>
+
+      @if (!showSidePanel) {
+      <!-- Content for collapsed drawer -->
+      <div class="drawer-actions-collapsed">
+        <button mat-icon-button
+          (click)="onNewSessionClick()"
+          class="action-button new-chat-action"
+          type="button"
+          aria-label="New Chat"
+          data-test-id="collapsed-new-chat-button">
+          <mat-icon class="material-symbols-outlined" data-test-id="collapsed-new-chat-button-icon">edit_square</mat-icon>
+        </button>
+
+        <button mat-icon-button (click)="deleteSession(sessionId)" *ngIf="appName != '' && sessionId"
+          class="action-button delete-chat-action"
+          type="button"
+          aria-label="Delete current chat"
+          data-test-id="collapsed-delete-chat-button">
+          <mat-icon data-test-id="collapsed-delete-chat-button-icon">delete_outline</mat-icon>
+        </button>
+      </div>
+      }
+
+      <!-- <div class="tabs-container" *ngIf="appName != '' && showSidePanel">
+        <mat-tab-group>
+          <mat-tab class="tabs-header">
+            <ng-template mat-tab-label>
+              <span class="tab-label">Events</span>
+            </ng-template>
+            <app-event-tab
+              [eventsMap]="eventData"
+              (selectedEvent)="selectEvent($event)"
+            ></app-event-tab>
+          </mat-tab>
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <span class="tab-label">State</span>
+            </ng-template>
+            <app-state-tab [sessionState]="currentSessionState"></app-state-tab>
+          </mat-tab>
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <span class="tab-label">Artifacts</span>
+            </ng-template>
+            <app-artifact-tab [artifacts]="artifacts"> </app-artifact-tab>
+          </mat-tab>
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <span class="tab-label">Eval</span>
+            </ng-template>
+            <app-eval-tab
+              [appName]="appName"
+              [userId]="userId"
+              [sessionId]="sessionId"
+              (sessionSelected)="updateWithSelectedSession($event)"
+            ></app-eval-tab>
+          </mat-tab>
+        </mat-tab-group>
+      </div> -->
+
+      @if (showSidePanel) {
+      <!-- Content for expanded drawer -->
+      <div class="drawer-actions-expanded">
+        <button mat-stroked-button
+          (click)="onNewSessionClick()"
+          class="action-button new-chat-action"
+          type="button"
+          aria-label="New Chat"
+          data-test-id="expanded-new-chat-button">
+          <mat-icon class="material-symbols-outlined" data-test-id="expanded-new-chat-button-icon">edit_square</mat-icon>
+          <span>New Chat</span>
+        </button>
+
+        <!-- Previous Chats List -->
+        <div class="sessions-list-container" *ngIf="appName != ''">
+          <h3>History</h3>
+          <app-session-tab [userId]="userId" [appName]="appName" [sessionId]="sessionId"
+            (sessionSelected)="updateWithSelectedSession($event)" (sessionReloaded)="updateSessionState($event)">
+          </app-session-tab>
+        </div>
+
+        <!-- <div class="details-panel-container"
+              *ngIf="this.selectedEvent && showSidePanel">
+              <div class="details-content">
+                <div style="display: flex; justify-content: flex-end; margin-top: 10px">
+                  <mat-paginator
+                    class="event-paginator"
+                    [length]="eventData.size"
+                    [pageSize]="1"
+                    [pageIndex]="selectedEventIndex"
+                    (page)="handlePageEvent($event)"
+                    aria-label="Select event"
+                  >
+                  </mat-paginator>
+                  <button mat-mini-fab>
+                    <mat-icon (click)="closeSelectedEvent()">close</mat-icon>
+                  </button>
+                </div>
+              </div>
+              <div>
+                <mat-tab-group>
+                  <mat-tab label="Event">
+                    <div
+                      style="
+                        margin-top: 16px;
+                        margin-bottom: 16px;
+                        display: flex;
+                        justify-content: center;
+                      "
+                    >
+                      <div
+                        *ngIf="renderedEventGraph"
+                        [innerHtml]="renderedEventGraph"
+                      ></div>
+                    </div>
+                    <ngx-json-viewer [json]="selectedEvent"></ngx-json-viewer>
+                  </mat-tab>
+                  <mat-tab label="Request">
+                    <ngx-json-viewer [json]="llmRequest"></ngx-json-viewer>
+                  </mat-tab>
+                  <mat-tab label="Response">
+                    <ngx-json-viewer [json]="llmResponse"></ngx-json-viewer>
+                  </mat-tab>
+                </mat-tab-group>
+              </div>
+          </div> -->
+
+        <!-- Delete Current Chat Button -->
+        <button mat-stroked-button (click)="deleteSession(sessionId)" *ngIf="appName != '' && sessionId"
+          class="action-button delete-chat-action">
+          <mat-icon>delete_outline</mat-icon>
+          <span>Delete Current Chat</span>
+        </button>
+      </div>
+      }
+    </div>
+  </mat-drawer>
+
+  <div class="chat-container" @fadeInFromLeft>
+    <!-- <div class="chat-toolbar" *ngIf="appName != '' && sessionId">
+      <div class="toolbar-left">
+        <div class="toolbar-session-text">Session ID</div>
+        <div class="toolbar-session-id">{{ sessionId }}</div>
+      </div>
+      <div class="toolbar-right">
+        <div class="toolbar-sse-toggle">
+          <mat-slide-toggle class="example-margin" [checked]="enableSseIndicator()" (change)="toggleSse()">
+            <span>Token Streaming</span>
+          </mat-slide-toggle>
+        </div>
+        <mat-divider [vertical]="true"></mat-divider>
+      </div>
+    </div> -->
+    <mat-card class="chat-card" [class.active-chat]="messages.length > 0">
+      @if (!selectedAppControl.value) { @if (isLoadingApps()) {
+        <div class="loading-container">
+          <span>Loading agents, please wait...</span>
+        </div>
+      } @else {
+        <div class="loading-container">
+          @if (((apps$ | async) || []).length > 0) {
+            <!-- Welcome message when no app is selected but apps are available -->
+            <div class="name-container" #nameContainer>Hey, {{userFirstName}}!</div>
+            <div class="helper-container">Select an agent on the left to begin with.</div>
+          } @else {
+            <div>
+              Failed to load agents. To get started, run
+              <pre>adk web</pre>
+              in the folder that contains the agents.<br />
+              @if (loadingError()) { Error message: <br />
+              <pre class="error">{{ loadingError() }}</pre>
+              } @else {
+              <pre class="warning">Warning: No agents found in current folder.</pre>
+              }
+            </div>
+          }
+        </div>
+      } } @else { <!-- This means selectedAppControl.value is true, and thus appName != '' -->
+        <button mat-fab color="primary" class="fab-button" *ngIf="false" (click)="openDialog()">
+          <mat-icon>priority_high</mat-icon>
+        </button>
+        <div class="chat-content" [class.initial-state]=" messages.length === 0 && userInput.length === 0 && !isTyping ">
+          <!-- Welcome Message -->
+          @if ( messages.length === 0 && userInput.length === 0 && !isTyping ) {
+            <div class="empty-state-container">
+              <div class="name-container" #nameContainer>Hey, {{userFirstName}}!</div>
+              <div class="helper-container">How can I help you today?</div>
+            </div>
+          }
+
+          <!-- Chat Messages -->
+          <div #autoScroll class="chat-messages" *ngIf="appName != ''" [@slideInOut]>
+            <div class="messages-list-column">
+              <div #videoContainer></div>
+              @for (message of messages; track $index) {
+                <div [ngClass]="{
+                  'user-message': message.role === 'user',
+                  'bot-message': message.role === 'bot'
+                }" [@messageAnimation]>
+                  <ng-container *ngIf="message.text || message.renderedContent">
+                    <mat-card class="message-card">
+                      <div class="attachments" *ngIf="message.attachments">
+                        <div class="attachment" *ngFor="let file of message.attachments">
+                          <ng-container *ngIf="file.file.type.startsWith('image/')">
+                            <img [src]="file.url" alt="attachment" class="image-preview-chat" />
+                          </ng-container>
+                          <ng-container *ngIf="!file.file.type.startsWith('image/')">
+                            <mat-icon>insert_drive_file</mat-icon>
+                            <a [href]="file.url" download>{{ file.file.name }}</a>
+                          </ng-container>
+                        </div>
+                      </div>
+                      <div>
+                        <div *ngIf="message.thought" class="thought-chip">Thought</div>
+                        <div>
+                          <markdown *ngIf="message.text" [data]="message.text" [ngStyle]="{
+                              'font-style': message.thought ? 'italic' : 'normal',
+                            }"></markdown>
+                        </div>
+                        <div *ngIf="message.renderedContent">
+                          <div [innerHTML]="renderGooglerSearch(message.renderedContent)"></div>
+                        </div>
+                      </div>
+                      <code *ngIf="message.executableCode">
+                        {{ message.executableCode.code }}
+                        </code>
+                      <div *ngIf="message.codeExecutionResult">
+                        <div>Outcome: {{ message.codeExecutionResult.outcome }}</div>
+                        <div>Output: {{ message.codeExecutionResult.output }}</div>
+                      </div>
+                      <div *ngIf="message.inline_data && message.role === 'bot'">
+                        <img class="generated-image" alt="image" [src]="message.inline_data.data" />
+                      </div>
+                      <button mat-stroked-button class="function-event-button" *ngIf="message.functionCall"
+                        (click)="clickEvent($index)">
+                        <mat-icon>bolt</mat-icon>
+                        {{ message.functionCall.name }}
+                      </button>
+                      <button mat-stroked-button class="function-event-button" *ngIf="message.functionResponse"
+                        (click)="clickEvent($index)">
+                        <mat-icon>check</mat-icon>
+                        {{ message.functionResponse.name }}
+                      </button>
+                    </mat-card>
+                  <!-- <button *ngIf="message.role === 'user'" mat-mini-fab>
+                      <mat-icon>person</mat-icon>
+                  </button> -->
+                  </ng-container>
+                </div>
+              }
+              <app-typing-loader *ngIf="isTyping" [@fadeInOut]></app-typing-loader>
+            </div>
+          </div>
+
+          <!-- Quick Start Component -->
+          @if ( messages.length === 0 && userInput.length === 0 && !isTyping ) {
+            <div class="quick-start-wrapper">
+              <app-quick-start
+                [tools]="quickStartTools"
+                (utteranceSelected)="onUtteranceSelected($event)">
+              </app-quick-start>
+            </div>
+          }
+
+          <!-- Chat Input Box -->
+          <div class="chat-input-wrapper" [@slideUpDown]>
+            <div class="chat-input-box-outer" *ngIf="appName != ''">
+              <div class="chat-input-box-inner">
+            <!-- <input type="file" multiple hidden (change)="onFileSelect($event)" #fileInput /> -->
+            <!-- <div class="file-preview" *ngIf="selectedFiles.length && appName != ''">
+              <div *ngFor="let file of selectedFiles; let i = index">
+                <div *ngIf="file.file.type.startsWith('image/')" class="image-container">
+                  <img [src]="file.url" alt="preview" class="image-preview" />
+                  <button mat-icon-button (click)="removeFile(i)" class="delete-button">
+                    <mat-icon color="warn">close</mat-icon>
+                  </button>
+                </div>
+                <div *ngIf="!file.file.type.startsWith('image/')" class="file-container">
+                  <button mat-icon-button (click)="removeFile(i)" class="delete-button">
+                    <mat-icon color="warn">close</mat-icon>
+                  </button>
+                  <div class="file-info">
+                    <mat-icon>insert_drive_file</mat-icon>
+                    <span>{{ file.file.name }}</span>
+                  </div>
+                </div>
+              </div>
+            </div> -->
+                <div class="chat-textarea google-sans-font">
+                  <textarea 
+                    class="google-sans-font" 
+                    #chatInputArea
+                    [placeholder]="messages.length === 0 ? 'Type your question here, start using our AI agents for wave planning now!' : ''"
+                    [(ngModel)]="userInput" 
+                    (keydown.enter)="sendMessage($event)" 
+                    rows="1"
+                    (input)="adjustTextareaHeight(chatInputArea)">
+                  </textarea>
+                </div>
+              </div>
+            </div>
+            <!-- <div class="send-button">
+              <button mat-icon-button (click)="sendMessage($event)">
+                <mat-icon>send</mat-icon>
+              </button>
+            </div> -->
+          </div>
+          <!-- <div class="chat-input-actions">
+            <button mat-icon-button (click)="fileInput.click()" class="function-event-button" style="margin-right: 10px">
+              <mat-icon>attach_file</mat-icon>
+            </button>
+            <div>
+              <button mat-icon-button matSuffix (click)="toggleAudioRecording()" [ngStyle]="{
+                            'background-color': isAudioRecording
+                              ? 'rgb(234, 67, 53)'
+                              : 'rgb(51, 53, 55)'
+                          }">
+                <mat-icon [innerText]="isAudioRecording ? 'stop' : 'mic'"></mat-icon>
+              </button>
+              <button mat-icon-button matSuffix (click)="toggleVideoRecording()" [ngStyle]="{
+                            'background-color': isVideoRecording
+                              ? 'rgb(234, 67, 53)'
+                              : 'rgb(51, 53, 55)'
+                          }">
+                <mat-icon [innerText]="isVideoRecording ? 'stop' : 'videocam'"></mat-icon>
+              </button>
+            </div>
+          </div> -->
+        </div>
+      }
+    </mat-card>
+  </div>
+</mat-drawer-container>

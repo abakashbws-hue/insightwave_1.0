@@ -1,0 +1,43 @@
+.video-dialog-container {
+  background-color: var(--background-primary);
+
+  .dialog-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem;
+    align-items: center;
+
+    h2 {
+      margin: 0;
+    }
+  }
+
+  .video-dialog-content {
+    background-color: var(--background-primary);
+
+    iframe {
+      display: block;
+      max-width: 100%;
+      border: none;
+    }
+
+    p {
+      display: none;
+    }
+
+    iframe+p {
+      display: block;
+    }
+  }
+
+  .close-button {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+  }
+
+  .error-message {
+    color: red;
+    margin-left: 10px;
+  }
+}

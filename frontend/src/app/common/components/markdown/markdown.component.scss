@@ -1,0 +1,51 @@
+.markdown-container {
+  position: relative; // Needed for absolute positioning of copy button
+  line-height: 1.2;
+
+  .loading-indicator,
+  .error-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+
+    mat-spinner {
+      margin-right: 10px;
+    }
+
+    mat-icon {
+      margin-right: 8px;
+    }
+  }
+
+  .error-message {
+    color: red;
+  }
+
+  markdown {
+    ::ng-deep h2 {
+      padding-bottom: 1rem;
+      border-bottom: 1px solid lightgrey;
+    }
+
+    ::ng-deep pre {
+      background-color: var(--background-primary);
+      border-radius: 4px;
+      overflow-x: auto;
+      padding: 0;
+      margin: 1em 0;
+
+      code {
+        display: block;
+        position: relative;
+        padding: 20px;
+      }
+
+      button[mat-icon-button] {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+      }
+    }
+  }
+}

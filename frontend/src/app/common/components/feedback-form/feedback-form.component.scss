@@ -1,0 +1,100 @@
+.feedback-form-container {
+    background-color: var(--background-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem; /* Spacing between elements */
+    padding: 1.3rem;
+    border-radius: 20px;
+
+    .feedback-form-title {
+        font-size: 1.5rem;
+        font-weight: 500;
+    }
+
+    .rating-stars {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem; /* Spacing between stars */
+    
+        mat-icon {
+            cursor: pointer;
+            color: #fdd835; /* Star color */
+            font-size: 2rem; /* Adjust star size */
+            width: 2rem;
+            height: 2rem;
+            transition: transform 0.2s ease; /* A little hover effect */
+    
+            &:hover {
+                transform: scale(1.1);
+            }
+        }
+    }
+
+    .feedback-comments {
+        width: 100%;
+        /* Text area taking full width */
+    }
+    
+    button[mat-flat-button] {
+        align-self: flex-end;
+        /* Aligned button to the right */
+    }
+}
+
+.feedback-submitted-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border-radius: 8px;
+    padding: 1rem;
+
+    .submitted-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+
+        .submitted-icon {
+            font-size: 36px;
+            width: 36px;
+            height: 36px;
+            color: #4CAF50;
+        }
+    
+        .submitted-title {
+            font-size: 1.5em;
+            font-weight: 500;
+        }
+    }
+
+    .submitted-message {
+        margin: 0;
+        color: #555;
+    }
+}
+
+.feedback-error-container {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    padding: 20px;
+    border-radius: 20px;
+    background-color: var(--mat-warn-50, #ffebee);
+
+    .error-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+        color: var(--mat-warn-500, #f44336);
+        margin-bottom: 12px;
+    }
+
+    .error-message {
+        font-size: 1rem;
+        color: var(--mat-color-on-surface-variant, rgba(0, 0, 0, 0.6));
+        margin-bottom: 16px;
+        line-height: 1.5;
+    }
+}

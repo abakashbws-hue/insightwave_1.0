@@ -1,0 +1,22 @@
+<section class="hero-section">
+  <div class="hero-content" @fadeSlideIn>
+    <h1 class="app-gradient">
+      Hello, {{ greetingName$ | async }}
+    </h1>
+    <h2>Welcome to InsightWave</h2>
+    <p>
+      InsightWave is an intelligent agent designed to automate the complex process of migration wave planning. By ingesting raw assessment reports, our tool leverages AI to analyze intricate application dependencies, technical constraints, and business requirements that are often overlooked in manual reviews.
+    </p>
+    <button class="cta-button" (click)="scrollToAutomationTools()">
+      <mat-icon>rocket_launch</mat-icon>
+      <span>Get Started</span>
+    </button>
+  </div>
+  <div class="hero-image-container" @fadeIn>
+    <img
+      src="assets/images/automation-home.png"
+      alt="Automation Home"
+      class="hero-robot-image"
+    />
+  </div>
+</section>

@@ -1,0 +1,30 @@
+.spinner {
+  width: 14%;
+  margin: 15px auto;
+}
+
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+app-header {
+  flex-shrink: 0;
+  height: 60px;
+}
+
+main {
+  flex-grow: 1;
+  display: block;
+}
+
+app-footer {
+  flex-shrink: 0;
+}
+
+.content-area {
+  flex-grow: 1;
+  overflow-y: auto;
+  height: 100%; 
+}

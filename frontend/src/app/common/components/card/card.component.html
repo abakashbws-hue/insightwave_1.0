@@ -1,0 +1,61 @@
+<div class="info-card">
+  <img
+    [src]="card?.imageUrl"
+    alt="{{ card?.title || 'Card Image' }}"
+    class="card-image"
+  />
+  <div class="card-content">
+    <h3 class="card-title">
+      {{ card?.title || "Card Title" }}
+    </h3>
+    <div class="description-div">
+      <span class="card-description" [class.crop-content]="cropDescription">{{
+        card?.description || "Card description goes here."
+        }}</span>
+      <a
+        aria-label="toggle description visibility"
+        class="read-more-link"
+        (click)="cropDescription=!cropDescription"
+      >
+        {{ cropDescription ? "Read More" : "Read Less" }}
+      </a>
+    </div>
+
+    <div class="card-actions">
+      <!-- Action Button -->
+      <a class="card-button"
+        [routerLink]="card?.routePath"
+        *ngIf="card?.routePath">
+        <mat-icon>settings</mat-icon>
+        {{ card?.buttonText || "Action" }}
+      </a>
+      <button class="card-button" *ngIf="!card?.routePath">
+        <mat-icon>settings</mat-icon>
+        {{ card?.buttonText || "Action" }}
+      </button>
+
+      <div class="card-icons">
+        <!-- Demo Video Link -->
+        <span *ngIf="card?.demoVideoUrl"
+          matTooltip="View Demo Video"
+          (click)="openVideoDialog(card?.demoVideoUrl, card?.title)"
+          (keydown.enter)="openVideoDialog(card?.demoVideoUrl, card?.title)"
+          tabindex="0"
+          role="button"
+          aria-label="View Demo Video">
+          <mat-icon class="view-demo-icon action-icon">movie</mat-icon>
+        </span>
+
+        <!-- Case Study Link -->
+        <a *ngIf="card?.caseStudyUrl"
+          matTooltip="View Case Study"
+          [href]="card?.caseStudyUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="View Case Study">
+          <mat-icon class="case-study-icon action-icon">article</mat-icon>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

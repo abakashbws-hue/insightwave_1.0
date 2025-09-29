@@ -1,0 +1,253 @@
+// Custom Theming for Angular Material
+// For more information: https://material.angular.io/guide/theming
+@use "@angular/material" as mat;
+// Plus imports for other components in your app.
+
+// Include the common styles for Angular Material. We include this here so that you only
+// have to load a single css file for Angular Material in your app.
+// Be sure that you only ever include this mixin once!
+@include mat.core();
+
+/* Import Material Icons */
+@import url("https://fonts.googleapis.com/icon?family=Material+Icons");
+
+// Define the theme object.
+$ccaiportal-admin-light-theme: mat.define-theme(
+  (
+    color: (
+      theme-type: light,
+      primary: mat.$azure-palette,
+      tertiary: mat.$blue-palette,
+    ),
+    density: (
+      scale: 0,
+    ),
+  )
+);
+// Define a dark theme object.
+$ccaiportal-admin-dark-theme: mat.define-theme(
+  (
+    color: (
+      theme-type: dark,
+      primary: mat.$azure-palette,
+      tertiary: mat.$blue-palette,
+    ),
+    density: (
+      scale: 0,
+    ),
+  )
+);
+
+// Include theme styles for core and each component used in your app.
+// Alternatively, you can import and @include the theme mixins for each component
+// that you are using.
+:root {
+  @include mat.all-component-themes($ccaiportal-admin-light-theme);
+
+  // Light theme (default)
+  --background-primary: #f7fbff;
+  --background-secondary: #ffffff;
+  --background-tertiary: #eef4ff;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --text-tertiary: #534646;
+  --accent-color: #007bff;
+  --border-color: #e0e0e0;
+  --border-color-secondary: #dde6f6;
+  --card-bg: #ffffff;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --shadow-primary: rgba(0, 0, 0, 0.15);
+  --user-message-bg: linear-gradient( to right, #d1e3ff, #c2d9ff );
+  --bot-message-bg: #e8eaed;
+  --selected-chat-bg: #e8f0fe;
+  --hover-bg: #dce9f7;
+}
+
+[data-theme="dark"] {
+  // Apply dark theme styles when the data-theme attribute is set to "dark"
+  // Only include the color styles for the dark theme.
+  // Structural, typography, and density styles are inherited from the light theme's
+  // all-component-themes call, as they are the same for the dark theme.
+  @include mat.all-component-colors($ccaiportal-admin-dark-theme);
+
+  --background-primary: #1a1a1a;
+  --background-secondary: #2d2d2d;
+  --background-tertiary: #404040;
+  --text-primary: #ffffff;
+  --text-secondary: #b3b3b3;
+  --text-tertiary: #dcd5d5;
+  --accent-color: #4dabf7;
+  --hover-bg: rgba(255, 255, 255, 0.05);
+  --border-color: #404040;
+  --border-color-secondary: #3a3a3a;
+  --card-bg: #2d2d2d;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --shadow-primary: rgba(255, 255, 255, 0.15);
+  --user-message-bg: linear-gradient( to right, #3a3a3a, #4d4d4d );
+  --bot-message-bg: #505050;
+  --selected-chat-bg: #3a3a3a;
+  --hover-bg: #262626;
+}
+
+// Comment out the line below if you want to use the pre-defined typography utility classes.
+// For more information: https://material.angular.io/guide/typography#using-typography-styles-in-your-application.
+// @include mat.typography-hierarchy($quickbot-admin-theme);
+
+// Comment out the line below if you want to use the deprecated `color` inputs.
+// @include mat.color-variants-backwards-compatibility($quickbot-admin-the me);
+/* You can add global styles to this file, and also import other style files */
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: Google Sans, Helvetica Neue, Roboto, sans-serif;
+}
+app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+app-header {
+  height: var(--header-height);
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+}
+
+*,
+*:before,
+*:after {
+  box-sizing: inherit;
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.app-gradient {
+  background: linear-gradient(90deg, #3dbffc, #4385f2, #4285f4);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.tool-configuration-container {
+  height: calc(100vh - 110px); /* Subtracting header and footer heights */
+
+  .tool-configuration-sidenav {
+    width: 20vw;
+    background-color: var(--background-primary);
+
+    .stepper-header-section {
+      padding: 16px 20px;
+
+      .subtitle {
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: var(--text-primary);
+      }
+    }
+
+    .side-stepper {
+      background-color: var(--background-primary);
+      padding: 0 20px;
+    }
+  }
+
+  .tool-configuration-content {
+    background-color: var(--background-primary);
+    padding: 0;
+
+    .content-wrapper {
+      padding: 24px 32px;
+      max-width: 900px;
+      margin: 0 auto;
+
+      .content-section {
+        background-color: var(--background-secondary);
+        border-radius: 20px;
+        border: 1px solid #dde6f6;
+        box-shadow: 0 2px 4px var(--border-color-secondary);
+        margin-bottom: 24px;
+        transition: box-shadow 0.3s ease;
+
+        &:hover {
+          box-shadow: 0 4px 8px var(--shadow-primary);
+        }
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+
+        .content-header {
+          padding-bottom: 16px;
+          padding: 24px;
+          border-top-left-radius: 20px;
+          border-top-right-radius: 20px;
+          border-bottom: 1px solid var(--border-color-secondary);
+          background-color: var(--background-tertiary);
+
+          .content-title {
+            font-size: 1.5rem;
+            font-weight: 500;
+            margin: 0 0 8px 0;
+            color: var(--text-primary);
+          }
+
+          .content-description {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin: 0;
+          }
+        }
+
+        .stepper-form {
+          gap: 1rem;
+          padding: 1.5rem;
+          padding-bottom: 0;
+
+          .radio-item {
+            margin-right: 2rem;
+          }
+        }
+
+        .download-image {
+          height: auto;
+          align-self: center;
+          max-width: 800px;
+        }
+
+        .action-buttons {
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          padding: 1.5rem;
+        }
+
+        .markdown-preview {
+          padding: 0 1.5rem;
+        }
+      }
+    }
+  }
+
+  mat-stepper {
+    pointer-events: none;
+  }
+
+  .mat-vertical-content {
+    display: none;
+  }
+}

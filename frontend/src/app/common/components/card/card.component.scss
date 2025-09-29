@@ -1,0 +1,119 @@
+$action-gradient: linear-gradient(90deg, #3dbffc, #4385f2, #4285f4);
+$action-gradient-hover-icon: linear-gradient(90deg, darken(#3dbffc, 10%), darken(#4385f2, 10%), darken(#4285f4, 10%));
+
+.info-card {
+  background-color: var(--background-secondary);
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+  .card-image {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .card-content {
+    padding: 20px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+
+    .card-title {
+      font-size: 1.2em;
+      font-weight: 500;
+      margin: 0 0 10px;
+      color: var(--text-primary);
+    }
+
+    .description-div {
+      margin-bottom: 20px;
+
+      .card-description {
+        font-size: 0.95em;
+        color: var(--text-secondary);
+        line-height: 1.5;
+        margin: 0;
+        flex-grow: 1;
+      }
+
+      .read-more-link {
+        color: #555;
+        cursor: pointer;
+        white-space: nowrap;
+        font-weight: bold;
+        display: flex;
+        align-self: flex-start;
+      }
+    }
+
+    .card-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+
+      .card-button {
+        margin: 0;
+        background: $action-gradient;
+        color: #fff;
+        padding: 8px 15px;
+        font-size: 0.9em;
+        font-weight: 500;
+        border-radius: 20px;
+        cursor: pointer;
+        align-self: flex-start;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        text-decoration: none;
+      }
+
+      .card-icons {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+
+        .view-demo-icon,
+        .case-study-icon {
+          color: #1a73e8;
+          background: $action-gradient;
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          font-size: 1.6rem;
+          transition: background 0.3s ease, transform 0.3s ease;
+
+          &:hover {
+            background: $action-gradient-hover-icon;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            transform: scale(1.25);
+          }
+        }
+      }
+    }
+  }
+}
+
+.info-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px var(--shadow-primary);
+}
+
+.crop-content {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+}

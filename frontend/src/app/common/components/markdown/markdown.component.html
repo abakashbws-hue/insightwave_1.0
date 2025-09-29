@@ -1,0 +1,25 @@
+<div class="markdown-container">
+  <div *ngIf="isLoading" class="loading-indicator">
+    <mat-spinner diameter="30"></mat-spinner>
+    <span>Loading guide...</span>
+  </div>
+
+  <div *ngIf="error && !isLoading" class="error-message">
+    <mat-icon color="warn">error_outline</mat-icon>
+    <span>{{ error }}</span>
+  </div>
+
+  <markdown
+    *ngIf="!isLoading && !error && processedMarkdown"
+    clipboard
+    [data]="processedMarkdown"
+    [clipboardButtonTemplate]="defaultCopyButton"
+  ></markdown>
+
+  <!-- Default copy button if no template is provided -->
+  <ng-template #defaultCopyButton let-buttonCopy>
+    <button mat-icon-button (click)="onCopyToClipboard(buttonCopy)">
+      <mat-icon>content_copy</mat-icon>
+    </button>
+  </ng-template>
+</div>
