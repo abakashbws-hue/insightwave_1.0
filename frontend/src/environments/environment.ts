@@ -12,5 +12,5 @@ export const environment = {
     firestore: {
         db: 'cesportal-dev-db',
     },
-    agentUrl: 'http://localhost:8000',
+    agentUrl: 'https://insightwave-587701182416.us-central1.run.app',
 }

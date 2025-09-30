@@ -4,4 +4,4 @@ export const DIALOGFLOW_CX_URL_PATTERN =
 export const LOGGED_IN_USER_PROFILE = 'loggedInUserProfile';
 export const USER_SESSION_ACTIVE = 'userSessionActive';
 
-export const ROOT_AGENT_NAME = 'insightwave_agent_hitr';
+export const ROOT_AGENT_NAME = 'insightwave';
