@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "cesportal": {
+    "insightwave": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -17,7 +17,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/cesportal",
+            "outputPath": "dist/insightwave",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": [
@@ -50,7 +50,7 @@
                     "with": "src/environments/environment.prod.ts"
                 }
               ],
-              "outputPath": "dist/cesportal",
+              "outputPath": "dist/insightwave",
               "budgets": [
                 {
                   "type": "initial",
@@ -66,7 +66,7 @@
               "outputHashing": "all"
             },
             "development": {
-              "outputPath": "dist/cesportal-dev",
+              "outputPath": "dist/insightwave-dev",
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
@@ -78,10 +78,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "cesportal:build:production"
+              "buildTarget": "insightwave:build:production"
             },
             "development": {
-              "buildTarget": "cesportal:build:development"
+              "buildTarget": "insightwave:build:development"
             }
           },
           "defaultConfiguration": "development"
