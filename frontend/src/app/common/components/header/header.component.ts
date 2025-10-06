@@ -42,7 +42,7 @@ export class HeaderComponent {
   user$: Observable<AppUser | null> = of(inject(LocalStorageService).get<AppUser>(LOGGED_IN_USER_PROFILE));
   isScrolled = false;
 
-  showAgentChat = false;
+  showAgentChat = true;
 
   bugReportUrl =
     'https://b.corp.google.com/issues/new?component=1771202&template=2125095';
