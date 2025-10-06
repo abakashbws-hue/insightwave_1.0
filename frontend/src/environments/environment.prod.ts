@@ -1,16 +1,17 @@
 export const environment = {
     production: true,
-    gcpOauthClientId: '1037963862235-v1th9nqnfm4jif74hr1u4ac46sbeqggq.apps.googleusercontent.com',
+    gcpOauthClientId: '438871030724-ab2ec1i3v7053ikpb01lsedt1cefm4gv.apps.googleusercontent.com',
     firebase: {
-        apiKey: "AIzaSyBLLjrZizfH5kGzDYFJggmqL-aatRMFYqk",
-        authDomain: "cesportal.firebaseapp.com",
-        projectId: "cesportal",
-        storageBucket: "cesportal.firebasestorage.app",
-        messagingSenderId: "290189110046",
-        appId: "1:290189110046:web:49f81b0e49d7980981370f"
+	apiKey: "AIzaSyAwKNR8FAxXgFXOWpRbNrRCBSyv1wK0udw",
+	authDomain: "prj-tcds-prd-b-seed-9cdd.firebaseapp.com",
+	projectId: "prj-tcds-prd-b-seed-9cdd",
+	storageBucket: "prj-tcds-prd-b-seed-9cdd.firebasestorage.app",
+	messagingSenderId: "438871030724",
+	appId: "1:438871030724:web:36edc7ae95cf05869d4291",
+	measurementId: "G-LFMFWW62EV"
     },
     firestore: {
-        db: 'cesportal-db',
+        db: 'insightwave-db',
     },
     agentUrl: 'https://insightwave-587701182416.us-central1.run.app',
 }
