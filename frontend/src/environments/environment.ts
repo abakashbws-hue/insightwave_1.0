@@ -1,6 +1,6 @@
 export const environment = {
     production: false,
-    gcpOauthClientId: '1037963862235-v1th9nqnfm4jif74hr1u4ac46sbeqggq.apps.googleusercontent.com',
+    gcpOauthClientId: '438871030724-ab2ec1i3v7053ikpb01lsedt1cefm4gv.apps.googleusercontent.com',
     firebase: {
         apiKey: "AIzaSyAwKNR8FAxXgFXOWpRbNrRCBSyv1wK0udw",
         authDomain: "prj-tcds-prd-b-seed-9cdd.firebaseapp.com",
