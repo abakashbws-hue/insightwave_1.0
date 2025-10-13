@@ -32,7 +32,7 @@ export class AppComponent implements OnInit, OnDestroy {
   showLayout = true;
   private authService = inject(AuthService);
   isLoading$ = this.authService.isLoading$;
-  title = 'ces-portal';
+  title = 'insightwave';
   private routerSubscription: Subscription | undefined;
   isChatOpen = false;
 

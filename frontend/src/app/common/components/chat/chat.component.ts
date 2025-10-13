@@ -431,14 +431,14 @@ export class ChatComponent
 
     let index = this.eventMessageIndexArray.length - 1;
     this.streamingTextMessage = null;
-    this.isTyping = true;
+    this.isTyping = false;
 
     this.agentService.run_sse(req).subscribe({
       next: async (chunk) => {
         const chunkJson = JSON.parse(chunk);
         if (chunkJson.error) {
           this.openSnackBar(chunkJson.error, 'OK');
-          this.isTyping = false;
+          this.isTyping = true;
           return;
         }
         if (chunkJson.content) {
@@ -447,7 +447,7 @@ export class ChatComponent
             this.processPart(chunkJson, part, index);
           }
         }
-        this.isTyping = false;
+        this.isTyping = true;
       },
       error: (err) => {
         console.error('SSE error:', err);
@@ -724,7 +724,7 @@ export class ChatComponent
         response: authConfig,
       },
     });
-    this.isTyping = true;
+    this.isTyping = false;
     this.agentService.run(authResponse).subscribe((res) => {
       let index = this.eventMessageIndexArray.length - 1;
       for (const e of res) {

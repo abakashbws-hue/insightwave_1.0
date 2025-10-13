@@ -14,4 +14,5 @@ export const environment = {
         db: 'insightwave-db',
     },
     agentUrl: 'https://insightwave-587701182416.us-central1.run.app',
+    // agentUrl: 'http://localhost:8000',
 }
