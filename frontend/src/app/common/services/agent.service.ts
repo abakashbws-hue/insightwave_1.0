@@ -89,11 +89,21 @@ export class AgentService {
     );
   }
 
-  listApps(): Observable<string[]> {
-    if (this.apiServerDomain != undefined) {
-      const url = this.apiServerDomain + `/list-apps?relative_path=./`;
-      return this.http.get<string[]>(url);
+listApps(): Observable<string[]> {
+    if (this.apiServerDomain == undefined) {
+      return new Observable<[]>();
     }
-    return new Observable<[]>();
+    const url = this.apiServerDomain + `/list-apps?relative_path=./`;
+
+    // FIX: Use 'from(getIdToken)' to get the token and attach it to the request
+    return from(this.authService.getIdToken()).pipe(
+      switchMap((token: string) => {
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` // CRITICAL: Add Auth Token
+        };
+        return this.http.get<string[]>(url, { headers: headers });
+      })
+    );
   }
 }

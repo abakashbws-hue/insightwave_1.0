@@ -17,7 +17,7 @@ grouping_and_validation_agent = SequentialAgent(
     sub_agents=[
         group_assignment_agent,
         validation_agent,
-        report_export_agent,
+        # report_export_agent,
     ],
 )
 
@@ -36,14 +36,19 @@ migration_agent = LlmAgent(
     3. Call `blueprint_generator_agent` to create the migration blueprint.
     4. Call `grouping_and_validation_agent` to group the servers and validate the plan.
     """,
-    sub_agents=[ingestion_agent, config_normalizer_agent, blueprint_generator_agent, grouping_and_validation_agent],
+    sub_agents=[
+        ingestion_agent,
+        config_normalizer_agent,
+        blueprint_generator_agent,
+        grouping_and_validation_agent,
+    ],
 )
 
 pattern_doc_agent = LlmAgent(
-    model='gemini-2.5-pro',
-    name='pattern_doc_agent',
-    description="A specialist agent for generating high-level, human-readable migration documentation. Use this agent ONLY when the user explicitly asks for a 'migration plan' or a 'runbook' document. This agent does not process raw data.",    
-    instruction='''
+    model="gemini-2.5-pro",
+    name="pattern_doc_agent",
+    description="A specialist agent for generating high-level, human-readable migration documentation. Use this agent ONLY when the user explicitly asks for a 'migration plan' or a 'runbook' document. This agent does not process raw data.",
+    instruction="""
     You are a Migration Assistant Agent. Your purpose is to help users generate migration documentation for Google Cloud. Your primary function is to gather the necessary information from the user and then call the correct sub-agent to fulfill the request.
     
     [CONTEXT]
@@ -67,8 +72,8 @@ pattern_doc_agent = LlmAgent(
         - IF document_type is migration_runbook, THEN you MUST call the runbook_agent.
     
     Pass the collected destination and any other relevant details from the conversation to the chosen sub-agent.
-''',
-    sub_agents=[runbook_agent, mig_planning_doc_agent]
+""",
+    sub_agents=[runbook_agent, mig_planning_doc_agent],
 )
 
 root_agent = LlmAgent(
@@ -77,7 +82,7 @@ root_agent = LlmAgent(
     instruction="""
     You are the master router for the "Insight Wave" migration planning framework. Your sole responsibility is to analyze the user's initial request and delegate it to the correct specialist agent.
     
-    - If the user's request mentions a GCS bucket path (`gs://...`) or analyzing server data, delegate to the `migration_agent`.
+    - If the user's request mentions a GCS bucket path (`gs://...`) or a Google Drive link or analyzing server data, delegate to the `migration_agent`.
     - If the user asks for a generic "migration plan" or "runbook" without a data source, delegate to the `pattern_doc_agent`.
     """,
     sub_agents=[migration_agent, pattern_doc_agent],

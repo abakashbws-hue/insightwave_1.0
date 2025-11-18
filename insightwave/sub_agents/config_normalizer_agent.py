@@ -5,14 +5,16 @@ import os
 import glob
 import json
 import datetime
+import logging
 from google.cloud import storage
 from . import utils
 
-def inspect_and_load_data_context(tool_context: ToolContext ) -> str:
+
+def inspect_and_load_data_context(tool_context: ToolContext) -> str:
     """
     Inspects a directory for CSV files and returns a JSON string containing the schema (columns) for each file.
     """
-    directory_path = tool_context.state.get('directory_path', '')
+    directory_path = tool_context.state.get("directory_path", "")
     if not os.path.isdir(directory_path):
         return json.dumps({"error": f"Directory not found at '{directory_path}'"})
 
@@ -21,7 +23,9 @@ def inspect_and_load_data_context(tool_context: ToolContext ) -> str:
     csv_files = glob.glob(search_pattern)
 
     if not csv_files:
-        return json.dumps({"error": f"No CSV files found in directory '{directory_path}'"})
+        return json.dumps(
+            {"error": f"No CSV files found in directory '{directory_path}'"}
+        )
 
     for file_path in csv_files:
         filename = os.path.basename(file_path)
@@ -29,167 +33,232 @@ def inspect_and_load_data_context(tool_context: ToolContext ) -> str:
             df_header = pd.read_csv(file_path, nrows=0)
             schema[filename] = list(df_header.columns)
         except Exception as e:
-            print(
-                f"Warning: Could not read headers from {filename}. Skipping. Error: {e}"
+            logging.warning(
+                f"Could not read headers from {filename}. Skipping. Error: {e}"
             )
             continue
 
+    logging.debug(f"Generated data schema: {json.dumps({'data_schema': schema})}")
     return json.dumps({"data_schema": schema})
-    
+
+
 def generate_and_save_consolidated_csv(tool_context: ToolContext) -> str:
     """
     Consolidates multiple CSV files into a single golden record using a master index merge strategy.
     This ensures all unique assets are included without data loss from join operations.
     """
-    
-    directory_path = tool_context.state.get('directory_path')
+
+    directory_path = tool_context.state.get("directory_path")
     if not directory_path or not os.path.isdir(directory_path):
-        return json.dumps({"error": f"Directory path not found or invalid in tool_context state."})
+        return json.dumps(
+            {"error": f"Directory path not found or invalid in tool_context state."}
+        )
 
-    consolidation_config = tool_context.state.get('consolidation_config')
+    consolidation_config = tool_context.state.get("consolidation_config")
     if not consolidation_config:
-        return json.dumps({"error": "consolidation_config not found in tool_context state."})
+        return json.dumps(
+            {"error": "consolidation_config not found in tool_context state."}
+        )
 
-    consolidation_config_path = os.path.join(directory_path, "consolidation_config.json")
+    consolidation_config_path = os.path.join(
+        directory_path, "consolidation_config.json"
+    )
     try:
         with open(consolidation_config_path, "w") as f:
             json.dump(consolidation_config, f, indent=2)
-        print(f"Configuration saved to: {os.path.abspath(consolidation_config_path)}")
+        logging.info(
+            f"Configuration saved to: {os.path.abspath(consolidation_config_path)}"
+        )
         # Set the paths in the tool_context state for the next agent
         tool_context.state["consolidation_config_path"] = consolidation_config_path
         tool_context.state["directory_path"] = directory_path
     except Exception as e:
         return json.dumps({"error": f"Could not save configuration file. {e}"})
-    
 
     if not directory_path:
-        return json.dumps({"error": "directory_path not found in tool_context state. Cannot proceed."})
+        return json.dumps(
+            {"error": "directory_path not found in tool_context state. Cannot proceed."}
+        )
     if not consolidation_config_path:
-        return json.dumps({"error": "consolidation_config_path not found in tool_context state. Cannot proceed."})
+        return json.dumps(
+            {
+                "error": "consolidation_config_path not found in tool_context state. Cannot proceed."
+            }
+        )
 
     try:
-        with open(consolidation_config_path, 'r') as f:
+        with open(consolidation_config_path, "r") as f:
             consolidation_config = json.load(f)
-        print(f"Loaded configuration from: {os.path.abspath(consolidation_config_path)}")
+        logging.info(
+            f"Loaded configuration from: {os.path.abspath(consolidation_config_path)}"
+        )
     except (FileNotFoundError, json.JSONDecodeError) as e:
         return f"Error: Could not load or parse configuration file at {consolidation_config_path}. {e}"
-    
-    try:    
-        all_files_config = [consolidation_config['base_file']] + consolidation_config.get('files_to_merge', [])
+
+    try:
+        all_files_config = [
+            consolidation_config["base_file"]
+        ] + consolidation_config.get("files_to_merge", [])
         all_dataframes = {}
         master_key_set = set()
-        standardized_master_key = "asset_name" # The target name for our primary key
+        standardized_master_key = "asset_name"  # The target name for our primary key
 
         # --- Step 1: Pre-load and Standardize All DataFrames ---
         # Read each file, apply its specific renames, and collect all unique primary keys.
-        print("--- Phase 1: Pre-loading and Standardizing DataFrames ---")
+        logging.info("--- Phase 1: Pre-loading and Standardizing DataFrames ---")
         for file_config in all_files_config:
-            file_path = os.path.join(directory_path, file_config['filename'])
+            file_path = os.path.join(directory_path, file_config["filename"])
             if not os.path.exists(file_path):
-                print(f"Warning: File '{file_config['filename']}' not found. Skipping.")
+                logging.warning(
+                    f"File '{file_config['filename']}' not found. Skipping."
+                )
                 continue
 
-            original_key = file_config['key']
-            columns_to_keep = [item['column_name'] for item in file_config.get('columns_to_keep', [])]
-            
+            original_key = file_config["key"]
+            columns_to_keep = [
+                item["column_name"] for item in file_config.get("columns_to_keep", [])
+            ]
+
             # Ensure the original key is in the list of columns to read
             if original_key not in columns_to_keep:
                 columns_to_keep.append(original_key)
 
-            df = pd.read_csv(file_path, usecols=lambda c: c in columns_to_keep, low_memory=False)
+            df = pd.read_csv(
+                file_path, usecols=lambda c: c in columns_to_keep, low_memory=False
+            )
 
             # Apply renames to standardize column names *before* any merge
-            rename_map = file_config.get('rename_map', {})
+            rename_map = file_config.get("rename_map", {})
             df.rename(columns=rename_map, inplace=True)
-            
+
             # Determine the standardized key name for this file
             current_standardized_key = rename_map.get(original_key, original_key)
-            if standardized_master_key not in df.columns and current_standardized_key in df.columns:
-                 df.rename(columns={current_standardized_key: standardized_master_key}, inplace=True)
+            if (
+                standardized_master_key not in df.columns
+                and current_standardized_key in df.columns
+            ):
+                df.rename(
+                    columns={current_standardized_key: standardized_master_key},
+                    inplace=True,
+                )
 
             # Drop rows where the primary key is null/empty, as they cannot be merged
             df.dropna(subset=[standardized_master_key], inplace=True)
 
             # Collect all unique keys for the master index
             master_key_set.update(df[standardized_master_key].unique())
-            all_dataframes[file_config['filename']] = df
-        
+            all_dataframes[file_config["filename"]] = df
+            logging.debug(
+                f"  -> Processed {file_config['filename']}. Found {df.shape[0]} rows. DataFrame head:\n{df.head().to_string()}"
+            )
+
         if not master_key_set:
             return "Error: No valid data or primary keys found in any of the source files. Cannot create a master record."
 
         # --- Step 2: Create the Master DataFrame ---
         # This DataFrame contains a single column with every unique VM/asset name.
-        print(f"\n--- Phase 2: Building Master Index of {len(master_key_set)} Unique Assets ---")
-        master_df = pd.DataFrame(list(master_key_set), columns=[standardized_master_key])
+        logging.info(
+            f"--- Phase 2: Building Master Index of {len(master_key_set)} Unique Assets ---"
+        )
+        master_df = pd.DataFrame(
+            list(master_key_set), columns=[standardized_master_key]
+        )
 
         # --- Step 3: Iteratively Left-Join to the Master DataFrame ---
         # This enriches the master list with data from each source file.
-        print("\n--- Phase 3: Merging all data onto Master Index ---")
+        logging.info("--- Phase 3: Merging all data onto Master Index ---")
         for filename, df_to_merge in all_dataframes.items():
-            print(f"  Merging data from: {filename}")
+            logging.info(f"Merging data from: {filename}")
             # Ensure the DataFrame to be merged is unique on the key to avoid row duplication
-            df_to_merge.drop_duplicates(subset=[standardized_master_key], keep='first', inplace=True)
-            
+            df_to_merge.drop_duplicates(
+                subset=[standardized_master_key], keep="first", inplace=True
+            )
+
             master_df = pd.merge(
                 master_df,
                 df_to_merge,
                 on=standardized_master_key,
-                how='left',
-                suffixes=('', f'_{filename.replace(".csv", "")}') # Add suffix to handle duplicate columns
+                how="left",
+                suffixes=(
+                    "",
+                    f'_{filename.replace(".csv", "")}',
+                ),  # Add suffix to handle duplicate columns
             )
 
         # --- Step 4: Coalesce Duplicate Columns ---
         # If multiple files had the same column (e.g., 'guest_os'), merge them into one.
-        print("\n--- Phase 4: Cleaning and Finalizing Golden Record ---")
-        cols_to_coalesce = [col for col in master_df.columns if '_' in col and col.rsplit('_', 1)[0] in master_df.columns]
-        base_cols = set(col.rsplit('_', 1)[0] for col in cols_to_coalesce)
+        logging.info("--- Phase 4: Cleaning and Finalizing Golden Record ---")
+        cols_to_coalesce = [
+            col
+            for col in master_df.columns
+            if "_" in col and col.rsplit("_", 1)[0] in master_df.columns
+        ]
+        base_cols = set(col.rsplit("_", 1)[0] for col in cols_to_coalesce)
 
         for base_col in base_cols:
-            print(f"  Coalescing column: {base_col}")
-            related_cols = [base_col] + [c for c in master_df.columns if c.startswith(f"{base_col}_")]
+            logging.info(f"Coalescing column: {base_col}")
+            logging.debug(
+                f"    -> Columns to coalesce for '{base_col}': {[c for c in master_df.columns if c.startswith(base_col)]}"
+            )
+            related_cols = [base_col] + [
+                c for c in master_df.columns if c.startswith(f"{base_col}_")
+            ]
             # Forward-fill across the row to take the first non-null value
             master_df[base_col] = master_df[related_cols].bfill(axis=1).iloc[:, 0]
             # Drop the now-redundant suffixed columns
-            master_df.drop(columns=[c for c in related_cols if c != base_col], inplace=True)
+            master_df.drop(
+                columns=[c for c in related_cols if c != base_col], inplace=True
+            )
 
         # --- Final Step: Save the Consolidated File ---
-        output_filename = os.path.join(directory_path, "consolidated_migration_data.csv")
+        output_filename = os.path.join(
+            directory_path, "consolidated_migration_data.csv"
+        )
         master_df.to_csv(output_filename, index=False)
-        print("Cleaning up intermediate source files...")
+        logging.info("Cleaning up intermediate source files...")
         source_csvs = glob.glob(os.path.join(directory_path, "*.csv"))
         for csv_file in source_csvs:
             if os.path.abspath(csv_file) != os.path.abspath(output_filename):
                 try:
                     os.remove(csv_file)
-                    print(f"  -> Removed {os.path.basename(csv_file)}")
+                    logging.info(f"  -> Removed {os.path.basename(csv_file)}")
                 except Exception as e:
-                    print(
-                        f"  -> Warning: Could not remove {os.path.basename(csv_file)}. Error: {e}"
+                    logging.warning(
+                        f"Could not remove {os.path.basename(csv_file)}. Error: {e}"
                     )
 
-        success_message = f"Success! Consolidated data saved to: {os.path.abspath(output_filename)}"
-        print(f"\n{success_message}")
+        success_message = (
+            f"Success! Consolidated data saved to: {os.path.abspath(output_filename)}"
+        )
+        logging.info(success_message)
 
         # Set the paths in the tool_context state for the next agent
         tool_context.state["golden_record_path"] = os.path.abspath(output_filename)
 
-        # Return a structured JSON object containing both paths for the next agent.
-        return json.dumps({
+        final_payload = {
             "consolidation_config_path": os.path.abspath(consolidation_config_path),
-            "golden_record_path": os.path.abspath(output_filename)
-        })
+            "golden_record_path": os.path.abspath(output_filename),
+        }
+        logging.debug(
+            f"Final payload from generate_and_save_consolidated_csv: {json.dumps(final_payload, indent=2)}"
+        )
+        # Return a structured JSON object containing both paths for the next agent.
+        return json.dumps(final_payload)
 
     except KeyError as e:
         return f"Error: The 'consolidation_config' is missing a required key: {e}"
     except Exception as e:
         return f"Error during data processing: {e}"
 
-def generate_consolidation_config(tool_context: ToolContext, user_feedback: str = "") -> dict:
+
+def generate_consolidation_config(
+    tool_context: ToolContext, user_feedback: str = ""
+) -> dict:
     """
     Inspects data schemas and uses a GenAI model to generate or refine a consolidation_config.json.
     The resulting config is stored in the tool_context state.
     """
-    directory_path = tool_context.state.get('directory_path')
+    directory_path = tool_context.state.get("directory_path")
     if not directory_path:
         return {"error": "directory_path not found in tool_context state."}
 
@@ -280,9 +349,9 @@ Please create the initial configuration incorporating this feedback.
 """
 
     prompt = prompt_template.format(
-        data_schema=json.dumps(schema_data, indent=2),
-        feedback_section=feedback_section
+        data_schema=json.dumps(schema_data, indent=2), feedback_section=feedback_section
     )
+    logging.debug(f"Full prompt for generate_consolidation_config:\n{prompt}")
 
     # Step 3: Call the model
     try:
@@ -295,11 +364,14 @@ Please create the initial configuration incorporating this feedback.
 
         # Step 4: Store in context and return
         tool_context.state["consolidation_config"] = config_json
+        logging.debug(
+            f"LLM response for consolidation config: {json.dumps(config_json, indent=2)}"
+        )
         return config_json
 
     except (json.JSONDecodeError, Exception) as e:
         error_msg = f"Failed to generate/refine consolidation config. Error: {e}"
-        print(error_msg)
+        logging.error(error_msg)
         return {"error": error_msg}
 
 

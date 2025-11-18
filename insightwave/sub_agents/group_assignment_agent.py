@@ -17,8 +17,10 @@ import math
 import re
 import random
 from pandasql import sqldf
+import logging
 from . import utils
 
+# Configure logging
 # --- Google AI Configuration ---
 client = genai.Client(vertexai=True)
 
@@ -51,197 +53,9 @@ generation_config = GenerateContentConfig(
 
 # Initialize the Vertex AI model
 MODEL = "gemini-2.5-flash"
-artifact_bucket = "insightwave-final-artifacts"
-
-
-def _print_token_usage(response, call_description: str):
-    """Prints the token usage from the LLM response."""
-    try:
-        usage = response.usage_metadata
-        print(
-            f"    Token usage for '{call_description}': "
-            f"Prompt: {usage.prompt_token_count}, "
-            f"Response: {usage.candidates_token_count or 0}, "
-            f"Thought Token Count : {getattr(usage, 'thoughts_token_count', 'N/A')},"
-            f"Total: {usage.total_token_count}"
-        )
-    except Exception as e:
-        print(f"Unable to print the token usage: {e}")
-
-
-def _log_llm_error(
-    debug_dir: str, prompt: str, error: Exception, call_description: str
-):
-    """Logs LLM errors to a file in the debug directory."""
-    try:
-        if not os.path.exists(debug_dir):
-            os.makedirs(debug_dir)
-        log_file_path = os.path.join(debug_dir, "error.log")
-        with open(log_file_path, "a") as f:
-            f.write(f"--- LLM Error: {time.ctime()} ---\n")
-            f.write(f"Call Description: {call_description}\n")
-            f.write(f"Error Type: {type(error).__name__}\n")
-            f.write(f"Error Details: {error}\n")
-            f.write("--- Full Prompt ---\n")
-            f.write(prompt)
-            f.write("\n--- End of Error Log ---\n\n")
-        print(
-            f"    ERROR: LLM call failed for '{call_description}'. Details logged to {os.path.abspath(log_file_path)}"
-        )
-    except Exception as log_e:
-        print(f"    FATAL: Could not write to error log. Log Error: {log_e}")
-        print(f"    Original Error: {error}")
-
-
-def _generate_content_with_retry(
-    prompt: str,
-    call_description: str,
-    debug_dir: str,
-    max_retries: int = 5,
-    delay: int = 10,
-):
-    """
-    Calls model.generate_content with retry logic for transient service errors.
-    Uses exponential backoff with jitter.
-    Includes specific handling for 429 (resource exhaustion) and max_tokens errors.
-    """
-    response = None
-    for attempt in range(max_retries):
-        try:
-            # The generation_config is defined here, including the Vertex-specific 'thinking_config'.
-            # The safety_settings are passed as a separate argument. This resolves the validation error.
-            current_generation_config = generation_config
-            response = client.models.generate_content(
-                model=MODEL, contents=prompt, config=current_generation_config
-            )
-
-            # Check for empty response which can happen with safety filters etc.
-            if not response.candidates:
-                error_message = "LLM response was empty (no candidates returned)."
-                try:
-                    # The prompt_feedback is on the top-level response object
-                    block_reason = response.prompt_feedback.block_reason.name
-                    safety_ratings = str(response.prompt_feedback.safety_ratings)
-                    error_message += f" Block Reason: {block_reason}. Safety Ratings: {safety_ratings}"
-                except (AttributeError, IndexError):
-                    error_message += (
-                        " No specific block reason found in prompt_feedback."
-                    )
-
-                raise ValueError(error_message)
-
-            # Also check that the response actually contains text to parse.
-            # The .text property is a shortcut that can fail or be None if the response is empty.
-            try:
-                if not response.text:
-                    # This can happen if the model returns a response, but the content is empty.
-                    # This is often related to a safety filter on the *output*, even if the prompt was OK.
-                    finish_reason = "Unknown"
-                    safety_ratings_str = "Not available"
-                    try:
-                        finish_reason = response.candidates[0].finish_reason.name
-                        safety_ratings_str = str(response.candidates[0].safety_ratings)
-                    except (AttributeError, IndexError):
-                        pass  # Keep default values if we can't access details
-
-                    error_message = (
-                        "Model response was empty (contained no text). "
-                        f"Finish Reason: {finish_reason}. Safety Ratings: {safety_ratings_str}"
-                    )
-                    raise ValueError(error_message)
-            except (AttributeError, IndexError):
-                # This case handles a malformed response object where .text can't even be accessed.
-                raise ValueError(
-                    "Could not extract text from a malformed model response candidate."
-                )
-
-            _print_token_usage(response, call_description)
-            return response
-        except exceptions.ServiceUnavailable as e:
-            if attempt + 1 >= max_retries:
-                print(
-                    f"    ERROR: Max retries reached for '{call_description}'. Failing. Error: {e}"
-                )
-                _log_llm_error(debug_dir, prompt, e, call_description)
-                raise e
-
-            jitter = random.uniform(0, 5)
-            backoff_delay = delay * (2**attempt) + jitter
-            print(
-                f"    WARNING: Service unavailable for '{call_description}' (Attempt {attempt + 1}/{max_retries}). Retrying in {backoff_delay:.2f}s..."
-            )
-            time.sleep(backoff_delay)
-        except exceptions.ResourceExhausted as e:  # Catch 429 errors explicitly
-            if attempt + 1 >= max_retries:
-                print(
-                    f"    ERROR: Max retries reached for '{call_description}' after resource exhaustion. Failing. Error: {e}"
-                )
-                _log_llm_error(debug_dir, prompt, e, call_description)
-                raise e
-
-            jitter = random.uniform(0, 5)
-            backoff_delay = delay * (2**attempt) + jitter
-            print(
-                f"    WARNING: Resource exhausted for '{call_description}' (Attempt {attempt + 1}/{max_retries}). Retrying in {backoff_delay:.2f}s..."
-            )
-            time.sleep(backoff_delay)
-        except ValueError as e:
-            # Make the check case-insensitive to catch "MAX_TOKENS" finish reason.
-            if (
-                "max_tokens" in str(e).lower()
-                or "maximum context length" in str(e).lower()
-            ):
-                if response:
-                    _print_token_usage(
-                        response, f"{call_description} (on MAX_TOKENS error)"
-                    )
-
-                if attempt + 1 >= max_retries:
-                    print(
-                        f"    ERROR: Max tokens reached for '{call_description}' after max retries.  Please decrease the size of the input data or increase token limit"
-                    )
-                    _log_llm_error(debug_dir, prompt, e, call_description)
-                    raise e  # Re-raise the exception after max retries
-
-                jitter = random.uniform(0, 5)
-                backoff_delay = delay * (2**attempt) + jitter
-                print(
-                    f"    WARNING: Max tokens error encountered for '{call_description}' (Attempt {attempt + 1}/{max_retries}). Retrying in {backoff_delay:.2f}s..."
-                )
-                time.sleep(backoff_delay)
-            else:
-                # If it's a ValueError other than max_tokens, re-raise it immediately
-                raise
-        except Exception as e:
-            _log_llm_error(debug_dir, prompt, e, call_description)
-            raise e
-    # This line is technically unreachable if the loop raises, but it's good practice for clarity.
-    final_error = exceptions.ServiceUnavailable(
-        f"Failed to get response for '{call_description}' after {max_retries} attempts."
-    )
-    _log_llm_error(debug_dir, prompt, final_error, call_description)
-    raise final_error
-
-
-def _parse_model_response(response):
-    """
-    Parses the JSON from a model's text response in a robust way.
-    It extracts the JSON object even if it's surrounded by other text.
-    """
-    raw_text = response.text
-    # Make JSON parsing more robust. The model can sometimes return extra text
-    # or markdown formatting around the JSON object. This finds the first
-    # opening brace and the last closing brace to isolate the JSON object.
-    first_brace = raw_text.find("{")
-    last_brace = raw_text.rfind("}")
-
-    if first_brace == -1 or last_brace == -1:
-        raise json.JSONDecodeError(
-            "No JSON object found in the model's response.", raw_text, 0
-        )
-
-    clean_json_text = raw_text[first_brace : last_brace + 1]
-    return json.loads(clean_json_text)
+artifact_bucket = os.environ.get(
+    "INSIGHTWAVE_ARTIFACT_BUCKET", "insightwave-final-artifacts"
+)
 
 
 def _merge_blueprint_changes(current_blueprint, changes):
@@ -250,16 +64,16 @@ def _merge_blueprint_changes(current_blueprint, changes):
     Handles removals, additions, and modifications, then re-sorts.
     """
     if not isinstance(changes, dict):
-        print(
-            f"    WARNING: Refinement response is not a valid JSON object. Skipping refinement. Raw response: {changes}"
+        logging.warning(
+            f"Refinement response is not a valid JSON object. Skipping refinement. Raw response: {changes}"
         )
         return current_blueprint
 
     # Handle wave removal first to prevent trying to modify a deleted wave.
     wave_names_to_remove = changes.get("wave_names_to_remove", [])
     if wave_names_to_remove:
-        print(
-            f"  Removing {len(wave_names_to_remove)} wave definition(s): {wave_names_to_remove}"
+        logging.info(
+            f"Removing {len(wave_names_to_remove)} wave definition(s): {wave_names_to_remove}"
         )
         if "wave_definitions" in current_blueprint and isinstance(
             current_blueprint.get("wave_definitions"), list
@@ -273,7 +87,7 @@ def _merge_blueprint_changes(current_blueprint, changes):
     # Handle new waves
     new_waves = changes.get("new_wave_definitions", [])
     if new_waves:
-        print(f"  Adding {len(new_waves)} new wave definition(s).")
+        logging.info(f"Adding {len(new_waves)} new wave definition(s).")
         if "wave_definitions" not in current_blueprint or not isinstance(
             current_blueprint.get("wave_definitions"), list
         ):
@@ -283,7 +97,7 @@ def _merge_blueprint_changes(current_blueprint, changes):
     # Handle modified waves
     modified_waves = changes.get("modified_wave_definitions", [])
     if modified_waves:
-        print(f"  Modifying {len(modified_waves)} existing wave definition(s).")
+        logging.info(f"Modifying {len(modified_waves)} existing wave definition(s).")
         if "wave_definitions" not in current_blueprint or not isinstance(
             current_blueprint.get("wave_definitions"), list
         ):
@@ -306,8 +120,8 @@ def _merge_blueprint_changes(current_blueprint, changes):
                         current_blueprint["wave_definitions"][i] = modified_wave
                         break
             else:
-                print(
-                    f"  Warning: Model tried to modify a non-existent wave: '{wave_name_to_modify}'. Adding it as a new wave instead."
+                logging.warning(
+                    f"Model tried to modify a non-existent wave: '{wave_name_to_modify}'. Adding it as a new wave instead."
                 )
                 current_blueprint["wave_definitions"].append(modified_wave)
 
@@ -317,7 +131,9 @@ def _merge_blueprint_changes(current_blueprint, changes):
             current_blueprint["wave_definitions"], list
         ):
             current_blueprint["wave_definitions"].sort(
-                key=lambda x: x.get("priority", 999) if isinstance(x, dict) else 999
+                key=lambda x: (
+                    int(x.get("priority", 999)) if isinstance(x, dict) else 999
+                )
             )
 
     return current_blueprint
@@ -327,12 +143,12 @@ def assign_waves_with_sql(
     blueprint: dict, debug_dir: str, df_input: pd.DataFrame, primary_key_column: str
 ):
     """Assigns servers to waves by generating and executing SQL queries based on the blueprint."""
-    print("\n--- Phase 2: Assigning Servers to Waves using SQL ---")
+    logging.info("--- Phase 2: Assigning Servers to Waves using SQL ---")
     df = df_input
-    print("  Using provided DataFrame for assignments.")
+    logging.info("Using provided DataFrame for assignments.")
 
     if "wave_definitions" not in blueprint or not blueprint["wave_definitions"]:
-        print("FATAL: Blueprint contains no wave definitions.")
+        logging.critical("Blueprint contains no wave definitions.")
         return None
 
     all_server_assignments = {}
@@ -340,8 +156,8 @@ def assign_waves_with_sql(
 
     wave_defs = blueprint.get("wave_definitions", [])
     if not isinstance(wave_defs, list):
-        print(
-            f"  WARNING: 'wave_definitions' is not a list, it's a {type(wave_defs)}. Cannot assign waves."
+        logging.warning(
+            f"'wave_definitions' is not a list, it's a {type(wave_defs)}. Cannot assign waves."
         )
         return {}
 
@@ -351,13 +167,17 @@ def assign_waves_with_sql(
 
     for wave in sorted_waves:
         if not isinstance(wave, dict):
-            print(f"  WARNING: Found a non-dictionary item in wave_definitions. Skipping. Item: {wave}")
+            logging.warning(
+                f"Found a non-dictionary item in wave_definitions. Skipping. Item: {wave}"
+            )
             continue
 
         wave_name = wave.get("wave_name")
         query = wave.get("sql_query")
         if not wave_name or not query:
-            print(f"    WARNING: Wave '{wave_name}' is missing a name or a SQL query. Skipping.")
+            logging.warning(
+                f"Wave '{wave_name}' is missing a name or a SQL query. Skipping."
+            )
             continue
 
         # --- ROBUST GUARDRAIL ---
@@ -369,18 +189,20 @@ def assign_waves_with_sql(
         original_query = query
         # Use re.IGNORECASE for 'select' vs 'SELECT' and count=1 for subqueries.
         query = re.sub(
-            r'SELECT\s+.*?\s+FROM',
-            f'SELECT {pk_for_sql} FROM',
+            r"SELECT\s+.*?\s+FROM",
+            f"SELECT {pk_for_sql} FROM",
             original_query,
             count=1,
             flags=re.IGNORECASE,
         )
         if query != original_query:
-            print(f"    INFO: Standardizing query for wave '{wave_name}' to select the primary identifier.")
+            logging.info(
+                f"Standardizing query for wave '{wave_name}' to select the primary identifier."
+            )
 
-        print(f"  Processing '{wave_name}'...")
+        logging.info(f"Processing '{wave_name}'...")
         try:
-            print(f"    Executing query: {query}")
+            logging.info(f"  Executing query: {query}")
             # Execute the query, passing the DataFrame explicitly to avoid scope issues.
             result_df = sqldf(query, {"df": df})
             newly_assigned_count = 0
@@ -389,20 +211,20 @@ def assign_waves_with_sql(
                     all_server_assignments[asset_name] = wave_name
                     assigned_servers.add(asset_name)
                     newly_assigned_count += 1
-            print(
-                f"    -> Matched {len(result_df)} servers. Assigned {newly_assigned_count} new servers."
+            logging.info(
+                f"  -> Matched {len(result_df)} servers. Assigned {newly_assigned_count} new servers."
             )
         except Exception as e:
-            print(
-                f"    ERROR: Could not execute query for wave '{wave_name}'. Error: {e}"
-            )
+            logging.error(f"Could not execute query for wave '{wave_name}'. Error: {e}")
             continue
 
     unassigned_servers = set(df[primary_key_column]) - assigned_servers
     for server in unassigned_servers:
         all_server_assignments[server] = "Residual VMs-Needs Review"
-    print(f"  Assigned {len(unassigned_servers)} servers to 'Residual VMs-Needs Review'.")
-    print("\n--- Server assignment complete. ---")
+    logging.info(
+        f"Assigned {len(unassigned_servers)} servers to 'Residual VMs-Needs Review'."
+    )
+    logging.info("--- Server assignment complete. ---")
     return all_server_assignments
 
 
@@ -414,20 +236,20 @@ def validate_and_refine_wave_sizes(
     primary_key_column: str,
     min_wave_size: int = 5,
     max_wave_size: int = 150,
-    max_refinement_loops: int = 3,
+    max_refinement_loops: int = 1,
 ):
     """
     Iteratively validates wave sizes against min/max thresholds and refines the
     blueprint to correct them.
     """
-    print("\n--- Phase 2.5: Starting Wave Size Validation and Refinement ---")
-    print(f"  Min wave size: {min_wave_size}, Max wave size: {max_wave_size}")
+    logging.info("--- Phase 2.5: Starting Wave Size Validation and Refinement ---")
+    logging.info(f"Min wave size: {min_wave_size}, Max wave size: {max_wave_size}")
 
     current_assignments = assignments
     current_blueprint = blueprint
 
     for i in range(max_refinement_loops):
-        print(f"\n  Validation Loop #{i+1}/{max_refinement_loops}...")
+        logging.info(f"Validation Loop #{i+1}/{max_refinement_loops}...")
         wave_counts = pd.Series(current_assignments).value_counts().to_dict()
 
         waves_too_small = {
@@ -443,8 +265,8 @@ def validate_and_refine_wave_sizes(
         handle_unclassified = unclassified_count > min_wave_size
 
         if not waves_too_small and not waves_too_large and not handle_unclassified:
-            print(
-                "  Validation complete! All wave sizes are within boundaries and unclassified count is low."
+            logging.info(
+                "Validation complete! All wave sizes are within boundaries and unclassified count is low."
             )
             return current_assignments, current_blueprint
 
@@ -455,8 +277,8 @@ def validate_and_refine_wave_sizes(
 
         anomalous_waves_data = {}
         if waves_too_small:
-            print(
-                f"  Found {len(waves_too_small)} wave(s) smaller than min size: {list(waves_too_small.keys())}"
+            logging.info(
+                f"Found {len(waves_too_small)} wave(s) smaller than min size: {list(waves_too_small.keys())}"
             )
             for wave_name in waves_too_small:
                 server_list = servers_by_wave.get(wave_name, [])
@@ -469,8 +291,8 @@ def validate_and_refine_wave_sizes(
                 }
 
         if waves_too_large:
-            print(
-                f"  Found {len(waves_too_large)} wave(s) larger than max size: {list(waves_too_large.keys())}"
+            logging.info(
+                f"Found {len(waves_too_large)} wave(s) larger than max size: {list(waves_too_large.keys())}"
             )
             for wave_name in waves_too_large:
                 server_list = servers_by_wave.get(wave_name, [])
@@ -487,9 +309,13 @@ def validate_and_refine_wave_sizes(
                 }
 
         if handle_unclassified:
-            print(f"  Found {unclassified_count} unclassified servers. Attempting to create new waves for them.")
-            unclassified_server_list = servers_by_wave.get("Residual VMs-Needs Review", [])
-            sample_size = min(len(unclassified_server_list), 200) # Sample up to 200
+            logging.info(
+                f"Found {unclassified_count} unclassified servers. Attempting to create new waves for them."
+            )
+            unclassified_server_list = servers_by_wave.get(
+                "Residual VMs-Needs Review", []
+            )
+            sample_size = min(len(unclassified_server_list), 200)  # Sample up to 200
             server_sample = (
                 df[df[primary_key_column].isin(unclassified_server_list)]
                 .sample(n=sample_size, random_state=42)
@@ -542,14 +368,16 @@ def validate_and_refine_wave_sizes(
         """
 
         try:
-            print("  Sending request to LLM for wave size validation...")
-            response = _generate_content_with_retry(
+            logging.info("Sending request to LLM for wave size validation...")
+            response = utils.generate_content_with_retry(
                 validation_prompt, f"Wave Size Validation Loop {i+1}", debug_dir
             )
-            changes = _parse_model_response(response)
+            changes = utils.parse_model_response(response)
 
             if not any(changes.values()):
-                print("  Model returned no changes. Validation is considered complete.")
+                logging.info(
+                    "Model returned no changes. Validation is considered complete."
+                )
                 return current_assignments, current_blueprint
 
             current_blueprint = _merge_blueprint_changes(current_blueprint, changes)
@@ -558,11 +386,11 @@ def validate_and_refine_wave_sizes(
             )
             with open(validation_blueprint_filename, "w") as f:
                 json.dump(current_blueprint, f, indent=4)
-            print(
-                f"  Saved validated blueprint to: {os.path.abspath(validation_blueprint_filename)}"
+            logging.info(
+                f"Saved validated blueprint to: {os.path.abspath(validation_blueprint_filename)}"
             )
 
-            print("  Re-assigning servers with the refined blueprint...")
+            logging.info("Re-assigning servers with the refined blueprint...")
 
             current_assignments = assign_waves_with_sql(
                 blueprint=current_blueprint,
@@ -571,17 +399,19 @@ def validate_and_refine_wave_sizes(
                 primary_key_column=primary_key_column,
             )
             if not current_assignments:
-                print("  FATAL: Re-assignment failed during validation loop. Aborting.")
+                logging.critical(
+                    "Re-assignment failed during validation loop. Aborting."
+                )
                 return assignments, blueprint
 
         except (json.JSONDecodeError, exceptions.ServiceUnavailable, Exception) as e:
-            print(
-                f"    ERROR: Error during validation loop {i+1}: {e}. Stopping refinement."
+            logging.error(
+                f"Error during validation loop {i+1}: {e}. Stopping refinement."
             )
             return current_assignments, current_blueprint
 
-    print(
-        "\n--- Max validation loops reached. Proceeding with current assignments. ---"
+    logging.info(
+        "--- Max validation loops reached. Proceeding with current assignments. ---"
     )
     return current_assignments, current_blueprint
 
@@ -663,14 +493,20 @@ def _create_summary_report(
     }
 
     # --- Final Cleanup: Remove empty waves and re-order priorities ---
-    print("  Cleaning final report: Removing empty waves and re-ordering priorities...")
+    logging.info(
+        "Cleaning final report: Removing empty waves and re-ordering priorities..."
+    )
     # Filter out waves that have no servers assigned
     non_empty_waves = {
-        name: data for name, data in final_wave_definitions_dict.items() if data.get("wave_assignment")
+        name: data
+        for name, data in final_wave_definitions_dict.items()
+        if data.get("wave_assignment")
     }
 
     # Sort the remaining waves by their original priority
-    sorted_non_empty_waves = sorted(non_empty_waves.values(), key=lambda x: x.get("priority", 999))
+    sorted_non_empty_waves = sorted(
+        non_empty_waves.values(), key=lambda x: x.get("priority", 999)
+    )
 
     # Re-assign sequential priorities and build the final dictionary
     final_cleaned_wave_definitions = {}
@@ -682,10 +518,13 @@ def _create_summary_report(
                 final_cleaned_wave_definitions[name] = wave_data
                 break
 
-    final_report = {"summary": summary, "wave_definitions": final_cleaned_wave_definitions}
+    final_report = {
+        "summary": summary,
+        "wave_definitions": final_cleaned_wave_definitions,
+    }
     with open(output_path, "w") as f:
         json.dump(final_report, f, indent=4)
-    print(f"  Generated final migration wave plan: {os.path.abspath(output_path)}")
+    logging.info(f"Generated final migration wave plan: {os.path.abspath(output_path)}")
 
 
 def assign_groups_and_generate_plan(tool_context: ToolContext) -> str:
@@ -697,14 +536,16 @@ def assign_groups_and_generate_plan(tool_context: ToolContext) -> str:
     blueprint_path = tool_context.state.get("blueprint_path")
 
     if not golden_record_path:
-        return json.dumps({"error": "golden_record_path not found in tool_context state."})
+        return json.dumps(
+            {"error": "golden_record_path not found in tool_context state."}
+        )
     if not blueprint_path:
         return json.dumps({"error": "blueprint_path not found in tool_context state."})
 
     processed_csvs_dir = os.path.dirname(golden_record_path)
 
     try:
-        with open(blueprint_path, 'r') as f:
+        with open(blueprint_path, "r") as f:
             blueprint = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         return f"FATAL: Could not load or parse the blueprint file at '{blueprint_path}'. Error: {e}"
@@ -742,8 +583,8 @@ def assign_groups_and_generate_plan(tool_context: ToolContext) -> str:
         if total_vms > 0
         else 0
     )
-    print(
-        f"  Dynamically calculated wave sizes: min={min_wave_size}, max={max_wave_size}"
+    logging.info(
+        f"Dynamically calculated wave sizes: min={min_wave_size}, max={max_wave_size}"
     )
 
     final_assignments, final_blueprint = validate_and_refine_wave_sizes(
@@ -756,14 +597,16 @@ def assign_groups_and_generate_plan(tool_context: ToolContext) -> str:
         primary_key_column=primary_key_column,
     )
 
-    print("\n--- Phase 3: Saving Artifacts and Generating Summary ---")
+    logging.info("--- Phase 3: Saving Artifacts and Generating Summary ---")
     if "wave_definitions" in final_blueprint and isinstance(
         final_blueprint.get("wave_definitions"), list
     ):
         valid_wave_defs = [
             w for w in final_blueprint["wave_definitions"] if isinstance(w, dict)
         ]
-        sorted_wave_defs = sorted(valid_wave_defs, key=lambda x: x.get("priority", 999))
+        sorted_wave_defs = sorted(
+            valid_wave_defs, key=lambda x: int(x.get("priority", 999))
+        )
         for i, wave_def in enumerate(sorted_wave_defs):
             wave_def["priority"] = i + 1
         final_blueprint["wave_definitions"] = sorted_wave_defs
@@ -781,7 +624,11 @@ def assign_groups_and_generate_plan(tool_context: ToolContext) -> str:
         json.dump(final_blueprint, f, indent=4)
 
     final_report_path = os.path.join(debug_dir, "final_migration_wave_plan.json")
-    _create_summary_report(final_blueprint, final_assignments, final_report_path, df, primary_key_column)
+    final_csv_path = os.path.join(debug_dir, "final_migration_wave_plan.csv")
+    _create_summary_report(
+        final_blueprint, final_assignments, final_report_path, df, primary_key_column
+    )
+    utils.convert_migration_plan_to_csv(final_report_path, final_csv_path)
 
     # Set the new artifact path in the tool_context state for the next agent
     tool_context.state["wave_plan_path"] = os.path.abspath(final_report_path)
@@ -791,9 +638,9 @@ def assign_groups_and_generate_plan(tool_context: ToolContext) -> str:
     dashboard_html_path = os.path.join(template_dir, "dashboard.html")
     output_dashboard_path = None
     if os.path.exists(dashboard_html_path):
-        print(f"  Found dashboard.html. Injecting data using placeholder method...")
+        logging.info("Found dashboard.html. Injecting data using placeholder method...")
         try:
-            with open(dashboard_html_path, 'r', encoding='utf-8') as f:
+            with open(dashboard_html_path, "r", encoding="utf-8") as f:
                 dashboard_content = f.read()
 
             # The final_blueprint object is already in memory
@@ -805,20 +652,27 @@ def assign_groups_and_generate_plan(tool_context: ToolContext) -> str:
 
             # Replace the placeholder with the actual JSON data.
             # This is more robust and elegant than a broad regex.
-            modified_content = dashboard_content.replace(placeholder, blueprint_json_string)
+            modified_content = dashboard_content.replace(
+                placeholder, blueprint_json_string
+            )
 
-            output_dashboard_path = os.path.join(processed_csvs_dir, "wave_plan_dashboard.html")
+            output_dashboard_path = os.path.join(
+                processed_csvs_dir, "wave_plan_dashboard.html"
+            )
 
             if modified_content != dashboard_content:
-                with open(output_dashboard_path, 'w', encoding='utf-8') as f:
+                with open(output_dashboard_path, "w", encoding="utf-8") as f:
                     f.write(modified_content)
-                print(f"    Successfully injected data into {output_dashboard_path}")
+                logging.info(f"Successfully injected data into {output_dashboard_path}")
             else:
-                print(f"    WARNING: Could not find placeholder '{placeholder}' in {dashboard_html_path}. Dashboard will not be updated.")
-                print(f"    Please ensure the dashboard.html file contains a line like: const migrationBlueprint = {placeholder};")
+                logging.warning(
+                    f"Could not find placeholder '{placeholder}' in {dashboard_html_path}. Dashboard will not be updated."
+                )
+                logging.warning(
+                    f"Please ensure the dashboard.html file contains a line like: const migrationBlueprint = {placeholder};"
+                )
         except Exception as e:
-            print(f"    ERROR: Failed to inject data into dashboard.html. Error: {e}")
-
+            logging.error(f"Failed to inject data into dashboard.html. Error: {e}")
 
     # Create a human-readable summary message for the console
     total_assigned = sum(wave_counts.values())
@@ -830,7 +684,7 @@ def assign_groups_and_generate_plan(tool_context: ToolContext) -> str:
         for wave_name, server_count in sorted(wave_counts.items()):
             summary_lines.append(f"    - {wave_name}: {server_count} servers")
     summary_text = "\n".join(summary_lines)
-    print(summary_text)
+    logging.info(summary_text)
 
     # Create a structured JSON output for the next agent
     output_payload = {
@@ -839,37 +693,60 @@ def assign_groups_and_generate_plan(tool_context: ToolContext) -> str:
             "golden_record_path": os.path.abspath(golden_record_path),
             "blueprint_path": os.path.abspath(final_blueprint_path),
             "wave_plan_path": os.path.abspath(final_report_path),
+            "wave_plan_csv": os.path.abspath(final_csv_path),
         },
     }
 
     try:
+        wave_plan_gcs_path = f"waveplan/{os.path.basename(final_report_path)}"
         utils.upload_to_gcs(
-            artifact_bucket,
-            os.path.abspath(final_report_path),
-            f"waveplan/{os.path.basename(final_report_path)}",
+            artifact_bucket, os.path.abspath(final_report_path), wave_plan_gcs_path
         )
-        output_payload["artifacts"][
-            "wave_plan_gcs_path"
-        ] = f"https://storage.cloud.google.com/{artifact_bucket}/waveplan/{os.path.basename(final_report_path)}?authuser=1"
-        print(f"View generated wave plan at: [{output_payload['artifacts']['wave_plan_gcs_path']}]({output_payload['artifacts']['wave_plan_gcs_path']})")
+        wave_plan_url = utils.generate_signed_url(
+            artifact_bucket, wave_plan_gcs_path, expiration_minutes=60
+        )
+        output_payload["artifacts"]["wave_plan_gcs_path"] = wave_plan_url
+        logging.info(f"View generated wave plan at: [{wave_plan_url}]({wave_plan_url})")
     except Exception as e:
-        print(e)
+        logging.error(e)
         output_payload["artifacts"]["wave_plan_gcs_path"] = f"Failed to upload: {e}"
+
+    try:
+        csv_gcs_path = f"waveplan/{os.path.basename(final_csv_path)}"
+        utils.upload_to_gcs(
+            artifact_bucket, os.path.abspath(final_csv_path), csv_gcs_path
+        )
+        csv_url = utils.generate_signed_url(
+            artifact_bucket, csv_gcs_path, expiration_minutes=60
+        )
+        output_payload["artifacts"]["wave_plan_csv_gcs_path"] = csv_url
+        logging.info(f"View generated wave plan CSV at: [{csv_url}]({csv_url})")
+    except Exception as e:
+        logging.error(f"Failed to upload wave plan CSV to GCS. Error: {e}")
+        output_payload["artifacts"]["wave_plan_csv_gcs_path"] = f"Failed to upload: {e}"
 
     # Upload the dashboard to GCS
     if output_dashboard_path and os.path.exists(output_dashboard_path):
         try:
-            dashboard_gcs_path = f'dashboards/{os.path.basename(output_dashboard_path)}'
-            utils.upload_to_gcs(artifact_bucket, os.path.abspath(output_dashboard_path), dashboard_gcs_path)
-            dashboard_url = f'https://storage.cloud.google.com/{artifact_bucket}/{dashboard_gcs_path}?authuser=1'
-            print(f'View generated dashboard at: [{dashboard_url}]({dashboard_url})')
+            dashboard_gcs_path = f"dashboards/{os.path.basename(output_dashboard_path)}"
+            utils.upload_to_gcs(
+                artifact_bucket,
+                os.path.abspath(output_dashboard_path),
+                dashboard_gcs_path,
+            )
+            dashboard_url = utils.generate_signed_url(
+                artifact_bucket, dashboard_gcs_path, expiration_minutes=60
+            )
+            logging.info(
+                f"View generated dashboard at: [{dashboard_url}]({dashboard_url})"
+            )
             output_payload["artifacts"]["dashboard_gcs_path"] = dashboard_url
         except Exception as e:
-            print(f"    ERROR: Failed to upload dashboard to GCS. Error: {e}")
+            logging.error(f"Failed to upload dashboard to GCS. Error: {e}")
             output_payload["artifacts"]["dashboard_gcs_path"] = f"Failed to upload: {e}"
 
     final_output_string = json.dumps(output_payload, indent=2)
-    print(final_output_string)
+    logging.debug(f"Final output payload for next agent: {final_output_string}")
     return final_output_string
 
 
@@ -882,13 +759,14 @@ You are a migration wave assignment specialist. Your purpose is to take an appro
 
 **YOUR TASK:**
 1.  You MUST call the `assign_groups_and_generate_plan` tool.
-2.  You MUST parse the JSON string returned by the tool to extract the GCS links for the `wave_plan_gcs_path` and the `dashboard_gcs_path`.
-3.  Then You MUST respond with a user-friendly message in markdown that presents the GCS links.
+2.  You MUST parse the JSON string returned by the tool to extract the GCS links for the `wave_plan_gcs_path`, `wave_plan_csv_gcs_path` and the `dashboard_gcs_path`.
+3.  Then You MUST respond with a user-friendly message in markdown that presents the GCS links as hyperlinks to the user.
 
 For example:
     "The migration plan has been successfully generated.
     You can view the full artifacts here:
-    - **Migration Wave Plan**: View Plan
+    - **Migration Wave Plan JSON**: View JSON Plan
+    - ** Migration Wave Plan CSV**: View CSV
     - **Interactive Dashboard**: View Dashboard"
 """,
     tools=[assign_groups_and_generate_plan],

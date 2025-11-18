@@ -1,3 +1,4 @@
+import { RouterLink } from '@angular/router';
 import { Component, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../../services/auth.service';
@@ -13,7 +14,7 @@ import { map, Observable, of } from 'rxjs';
   templateUrl: './hero-section.component.html',
   styleUrl: './hero-section.component.scss',
   standalone: true,
-  imports: [MatIconModule, AsyncPipe],
+  imports: [MatIconModule, AsyncPipe, RouterLink],
   animations: [fadeSlideIn, fadeIn]
 })
 export class HeroSectionComponent {

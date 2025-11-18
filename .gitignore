@@ -1,5 +1,6 @@
-
+# local folders
 processed_csvs*/
+debug_proxy/
 
 .venv/
 
