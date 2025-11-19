@@ -17,7 +17,7 @@ grouping_and_validation_agent = SequentialAgent(
     sub_agents=[
         group_assignment_agent,
         validation_agent,
-        report_export_agent,
+        # report_export_agent,
     ],
 )
 
