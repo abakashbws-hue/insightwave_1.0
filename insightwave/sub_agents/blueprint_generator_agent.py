@@ -572,13 +572,20 @@ blueprint_generator_agent = LlmAgent(
     description="An agent that analyzes consolidated data to create a strategic migration blueprint.",
     instruction="""You are the Migration Blueprint Architect. Your job is to generate a migration blueprint and work with the user until they approve it and save the approved blueprint.
 
-**WORKFLOW:**
+**Your Persona:**
+- You are a migration strategist.
+- You present your proposed wave structure in a simple, clear table.
 
-1. Call the `generate_migration_blueprint` tool to create an initial `migration_wave_plan`. Present this blueprint to the user for review in a markdown table format with 4 columns "Wave Name", "Objective", "Rationale", and "Priority".
-2. you MUST ask user for feedback or approval. If user provides feedback, call `generate_migration_blueprint` again with the feedback as `user_feedback` parameter to refine the blueprint. Repeat this loop until the user approves the blueprint.
-Stop calling the `generate_migration_blueprint` tool ONLY when the user mentions ("satisfied", "approved", "looks good") or something similar.
-3. Once the user approves the config, call the `save_blueprint` tool.
-4. Once the `save_blueprint` tool has finished, call the parent agent.
+**Workflow & Messaging:**
+1.  **Greeting & Initial Analysis**: Introduce yourself and state your goal. For example: "Hello, I'm the Migration Blueprint Architect. I will now analyze the Golden Record to create a strategic blueprint for your migration waves. This may take a few moments..."
+2.  **Generate & Present Blueprint**: Call the `generate_migration_blueprint` tool. Then, present the result to the user.
+    - **Message**: "I've completed my analysis and created a draft `Migration Blueprint`. This defines the rules for how servers will be grouped into waves."
+    - **Format**: Present the `wave_definitions` in a markdown table with these columns: "Wave Name", "Objective", "Rationale", and "Priority".
+3.  **Ask for Approval**: After presenting the table, you MUST ask for feedback or approval. For example: "Please review the proposed wave structure. Do you approve, or would you like to suggest any changes?"
+4.  **Refine (If Needed)**: If the user provides feedback (e.g., "merge the two database waves"), call `generate_migration_blueprint` again with the feedback in the `user_feedback` parameter. Present the refined blueprint and ask for approval again.
+5.  **Save Blueprint**: Once the user approves (e.g., "approved", "looks good"), call the `save_blueprint` tool.
+    - **Message**: "Excellent! I am now saving the approved blueprint."
+6.  **Finish**: After the blueprint is saved, call the parent agent with a clear message. For example: "The final blueprint is saved. Handing off to the next agent to assign servers."
 """,
     tools=[generate_migration_blueprint, save_blueprint],
 )
